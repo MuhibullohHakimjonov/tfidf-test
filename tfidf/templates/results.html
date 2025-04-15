@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Frequency Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Word Frequency Analysis</h1>
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+        <tr>
+            <th>Word</th>
+            <th>TF</th>
+            <th>Count</th>
+            <th>IDF</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in results %}
+        <tr>
+            <td>{{ item.word }}</td>
+            <td>{{ item.tf }}</td>
+            <td>{{ item.count }}</td>
+            <td>{{ item.idf }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="text-center mt-4">
+        <a href="{% url 'upload_file' %}" class="btn btn-secondary">Upload Another File</a>
+    </div>
+</div>
+</body>
+</html>
