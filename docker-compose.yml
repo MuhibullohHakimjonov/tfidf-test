@@ -4,9 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: tfidf_web
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
-    ports:
-      - "8000:8000"
+    command: gunicorn config.wsgi:application --bind 127.0.0.1:8000
     depends_on:
       - mongo
     restart: always
@@ -19,8 +17,6 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: always
-    ports:
-      - "27017:27017"
     command: ["mongod", "--quiet"]
 
   nginx:
