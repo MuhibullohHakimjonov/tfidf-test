@@ -17,7 +17,11 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: always
-    command: ["mongod", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    command: ["mongod", "--auth", "--bind_ip", "127.0.0.1", "--quiet"]
+
 
   nginx:
     image: nginx:stable-alpine
