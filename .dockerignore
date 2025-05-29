@@ -1,9 +1,55 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-*.sqlite3
-.env
+*.pyc
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Django
 *.log
-static/
+*.pot
+*.mo
+
 media/
+static/
+
+# Virtual env
+venv/
+env/
+ENV/
+.venv/
+
+
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.override.yml
+
+# Git
+.git/
+.gitignore
+
+# VS Code and editors
+.vscode/
+.idea/
+
+# Coverage / test / debug
+htmlcov/
+.coverage
+.tox/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.log
+*.tmp

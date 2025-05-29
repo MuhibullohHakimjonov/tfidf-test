@@ -231,7 +231,6 @@
             <div class="button-row">
                 <button type="submit">Send</button>
                 <button type="button" id="clear-button">Clear</button>
-                <button type="button" id="stats-button">View Statistics</button>
             </div>
         </form>
         <div id="result"></div>
@@ -305,8 +304,8 @@
 
           const formData = new FormData();
           for (let file of files) {
-            if (file.size > 10 * 1024 * 1024) {
-              resultDiv.innerHTML = `<p class="error">File "${file.name}" exceeds 10MB limit.</p>`;
+            if (file.size > 9 * 1024 * 1024) {
+              resultDiv.innerHTML = `<p class="error">File "${file.name}" exceeds 9MB limit.</p>`;
               return;
             }
             formData.append('file', file);
@@ -334,7 +333,7 @@
 
             const table = document.createElement('table');
             const header = table.insertRow();
-            ['File', 'Word', 'TF', 'IDF', 'Score'].forEach(text => {
+            ['File', 'Word', 'TF', 'IDF'].forEach(text => {
               const th = document.createElement('th');
               th.textContent = text;
               header.appendChild(th);
@@ -343,7 +342,7 @@
             data.results.forEach(item => {
               item.metrics.forEach(metric => {
                 const row = table.insertRow();
-                [item.file_name, metric.word, metric.tf, metric.idf, metric.score].forEach((val, idx) => {
+                [item.file_name, metric.word, metric.tf, metric.idf].forEach((val, idx) => {
                   const cell = row.insertCell();
                   cell.textContent = idx < 2 || !val ? (val ?? '0') : Number(val).toFixed(6);
                 });
@@ -397,7 +396,7 @@
               if (item.metrics.length > 0) {
                 const table = document.createElement('table');
                 const header = table.insertRow();
-                ['Word', 'TF', 'IDF', 'Score'].forEach(text => {
+                ['Word', 'TF', 'IDF'].forEach(text => {
                   const th = document.createElement('th');
                   th.textContent = text;
                   header.appendChild(th);
@@ -405,7 +404,7 @@
 
                 item.metrics.forEach(metric => {
                   const row = table.insertRow();
-                  ['word', 'tf', 'idf', 'score'].forEach(key => {
+                  ['word', 'tf', 'idf'].forEach(key => {
                     const cell = row.insertCell();
                     cell.textContent = (key === 'word' || !metric[key]) ? (metric[key] ?? '0') : Number(metric[key]).toFixed(6);
                   });
@@ -425,3 +424,4 @@
     </script>
 </body>
 </html>
+

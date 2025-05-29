@@ -1,8 +1,9 @@
 from django.urls import path
-from django.views.generic import TemplateView
-
-from .views import TFIDFNoDBView
+from .views import TFIDFMongoUploadView, MetricsView, VersionView
 
 urlpatterns = [
-	path('upload/', TFIDFNoDBView.as_view(), name='tfidf-upload'),
+	path('upload/', TFIDFMongoUploadView.as_view(), name='tfidf-upload'),
+	path("metrics/", MetricsView.as_view(), name="metrics"),
+	path('version/', VersionView.as_view(), name='version')
+
 ]
