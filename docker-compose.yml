@@ -17,7 +17,7 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: always
-    command: ["mongod", "--quiet"]
+    command: ["mongod", "--bind_ip_all"]
 
   nginx:
     image: nginx:stable-alpine
