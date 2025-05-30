@@ -1,3 +1,9 @@
+version: '3.8'
+
+networks:
+  backend:
+    driver: bridge
+
 services:
   web:
     build:
@@ -10,11 +16,11 @@ services:
     restart: always
     env_file:
       - .env
+    networks:
+      - backend
 
   mongo:
     image: mongo:7-jammy
-    ports:
-      - "127.0.0.1:27017:27017"
     container_name: tfidf_mongo
     volumes:
       - mongo_data:/data/db
@@ -22,8 +28,9 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-    command: ["mongod", "--auth", "--bind_ip", "127.0.0.1", "--quiet"]
-
+    command: ["mongod", "--auth", "--bind_ip", "37.9.53.228"]
+    networks:
+      - backend
 
   nginx:
     image: nginx:stable-alpine
@@ -37,6 +44,8 @@ services:
     depends_on:
       - web
     restart: always
+    networks:
+      - backend
 
 volumes:
   mongo_data:
