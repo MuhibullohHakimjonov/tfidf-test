@@ -333,7 +333,7 @@
 
             const table = document.createElement('table');
             const header = table.insertRow();
-            ['File', 'Word', 'TF', 'IDF'].forEach(text => {
+            ['Word', 'TF', 'IDF'].forEach(text => {
               const th = document.createElement('th');
               th.textContent = text;
               header.appendChild(th);
@@ -342,9 +342,9 @@
             data.results.forEach(item => {
               item.metrics.forEach(metric => {
                 const row = table.insertRow();
-                [item.file_name, metric.word, metric.tf, metric.idf].forEach((val, idx) => {
+                [metric.word, metric.tf, metric.idf].forEach((val, idx) => {
                   const cell = row.insertCell();
-                  cell.textContent = idx < 2 || !val ? (val ?? '0') : Number(val).toFixed(6);
+                  cell.textContent = idx === 0 || !val ? (val ?? '0') : Number(val).toFixed(6);
                 });
               });
             });
@@ -424,4 +424,3 @@
     </script>
 </body>
 </html>
-
