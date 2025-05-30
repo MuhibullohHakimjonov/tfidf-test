@@ -91,4 +91,4 @@ class MetricsView(APIView):
 
 class VersionView(APIView):
 	def get(self, request):
-		return Response({'version': '1.2'}, status.HTTP_200_OK)
+		return Response({'version': '1.3'}, status.HTTP_200_OK)

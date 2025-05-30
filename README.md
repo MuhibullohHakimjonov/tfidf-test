@@ -16,10 +16,8 @@
 ├── media/               # Медиа-файлы (загрузка пользователями)\
 ├── requirements.txt     # Список зависимостей Python\
 ├── Dockerfile           # Описание Docker-образа\
-├── docker-compose.yml   # Docker Compose конфигурация для web, MongoDB и Nginx\
-├── nginx.conf           # Конфигурация Nginx\
+├── docker-compose.yml   # Docker Compose конфигурация для web, MongoDB\
 ├── .env                 # Файл переменных окружения\
-├── entrypoint.sh        # Скрипт запуска приложения (миграции, collectstatic, gunicorn)
 └── README.md            # Документация проекта
 
 
@@ -46,20 +44,27 @@
 Пример .env файла:
 ```text
 DJANGO_READ_DOT_ENV_FILE=True
-DJANGO_SECRET_KEY=your-secret-key
+DJANGO_SECRET_KEY=very-secret-key
 DJANGO_DEBUG=False
-MONGO_URI=mongodb_name://mongo:port
-MONGO_DB_NAME=example_db
+MONGO_INITDB_ROOT_USERNAME=username
+MONGO_INITDB_ROOT_PASSWORD=password
+MONGO_URI=mongodb://username:password@mongo:27017/?authSource=admin
+MONGO_DB_NAME=exmaple_db
 ```
 
 3. Построить и запустить контейнеры:
 ```bash
-  docker-compose up --build
+  docker-compose up -d
 ```
 📦 Версия приложения
-v1.2
+v1.3
 
 ## 📜 История изменений (Changelog)
+
+### v1.3
+- удаление Ngnix из проекта
+- Обновлена конфигурация .env, Dockerfile и docker-compose.yml
+- Улучшена структура README
 ### v1.2
 - Переход с PostgreSQL на MongoDB
 - Облегчённый Mongo-образ (mongo:7-jammy)
