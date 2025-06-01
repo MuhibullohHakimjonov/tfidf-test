@@ -1,66 +1,51 @@
 import math
 import re
-from collections import Counter
+from collections import Counter, defaultdict
+
+token_pattern = re.compile(r'\b\w+\b')
 
 
 def tokenize(text):
-	"""
-	Splits text into alphanumeric words in lower case.
-	"""
-	return re.findall(r'\b\w+\b', text.lower())
+	return token_pattern.findall(text.lower())
 
 
 def compute_global_tfidf_table(documents):
-	"""
-	Compute a global TF-IDF table for a list of document texts.
-
-	Steps:
-	  1. Compute document frequency (DF) for each word across all documents.
-	  2. Calculate the global inverse document frequency (IDF) for each word.
-	  3. Sort and pick the top 50 words by highest global IDF.
-	  4. For each document, compute its TF (term frequency) for each of these words.
-
-	Returns:
-	  - A list (one per document) with dictionaries containing "word", "tf", and "idf".
-	  - A matching list of total word counts for each document.
-	"""
 	N = len(documents)
-	df = {}
+	df = defaultdict(int)
+	tokenized_docs = []
 
-	# Step 1: Calculate document frequency (df) over all documents
+	# Step 1: Tokenize & compute DF
 	for doc in documents:
-		unique_words = set(tokenize(doc))
-		for word in unique_words:
-			df[word] = df.get(word, 0) + 1
+		tokens = tokenize(doc)
+		tokenized_docs.append(tokens)
+		for word in set(tokens):
+			df[word] += 1
 
-	# Step 2: Compute global IDF for each word
-	global_idf = {}
-	for word, count in df.items():
-		# Avoid division by zero even if count is 0; although by design count > 0.
-		global_idf[word] = math.log(N / count) if count > 0 else 0
+	# Step 2: Compute IDF
+	global_idf = {word: math.log(N / count) for word, count in df.items()}
 
-	# Step 3: Sort words by global IDF in descending order and obtain the top 50
+	# Step 3: Top 50 by IDF
 	top_50_words = sorted(global_idf.items(), key=lambda x: x[1], reverse=True)[:50]
-	# Extract just the word list in order
-	top_50_words = [word for word, _ in top_50_words]
+	top_words = [word for word, _ in top_50_words]
 
-	# Step 4: For each document, compute TF for each top word.
+	# Step 4: Compute TF
 	results = []
 	word_counts = []
-	for doc in documents:
-		words = tokenize(doc)
-		total_words = len(words) or 1  # safeguard against division by zero
+	for tokens in tokenized_docs:
+		total_words = len(tokens)
 		word_counts.append(total_words)
-		tf_counter = Counter(words)
 
+		tf_counter = Counter(tokens)
 		doc_result = []
-		for word in top_50_words:
-			tf = tf_counter.get(word, 0) / total_words
+
+		for word in top_words:
+			tf = tf_counter[word] / total_words if total_words else 0
 			doc_result.append({
 				"word": word,
 				"tf": round(tf, 6),
 				"idf": round(global_idf[word], 6)
 			})
+
 		results.append(doc_result)
 
 	return results, word_counts

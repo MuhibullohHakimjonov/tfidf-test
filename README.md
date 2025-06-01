@@ -46,10 +46,11 @@
 DJANGO_READ_DOT_ENV_FILE=True
 DJANGO_SECRET_KEY=very-secret-key
 DJANGO_DEBUG=False
-MONGO_INITDB_ROOT_USERNAME=username
-MONGO_INITDB_ROOT_PASSWORD=password
-MONGO_URI=mongodb://username:password@mongo:27017/?authSource=admin
-MONGO_DB_NAME=exmaple_db
+MONGO_USERNAME=example_username
+MONGO_PASSWORD=example_password
+MONGO_HOST=mongo
+MONGO_PORT=27017
+MONGO_DB_NAME=example_db
 ```
 
 3. Построить и запустить контейнеры:
