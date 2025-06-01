@@ -3,7 +3,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .mongo import get_documents_collection, get_mongo_collections
-from .utils import compute_tfidf_for_documents
+from .utils import compute_global_tfidf_table
 from datetime import datetime
 
 MAX_FILE_SIZE = 8 * 1024 * 1024
@@ -13,7 +13,7 @@ class TFIDFMongoUploadView(APIView):
 	parser_classes = [MultiPartParser]
 
 	def post(self, request):
-		files = request.FILES.getlist("files")
+		files = request.FILES.getlist("file")
 		if not files:
 			return Response({"error": "No files provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -29,10 +29,12 @@ class TFIDFMongoUploadView(APIView):
 			return Response({"error": "Unable to decode one or more files"}, status=status.HTTP_400_BAD_REQUEST)
 
 		try:
-			tfidf_results, word_counts = compute_tfidf_for_documents(texts)
+			# Вычисляем глобальную таблицу TF-IDF
+			tfidf_results, word_counts = compute_global_tfidf_table(texts)
 			documents_collection = get_documents_collection()
-			response_data = []
+			file_ids = []
 
+			# Сохраняем данные каждого документа в MongoDB
 			for file, text, metrics, word_count in zip(files, texts, tfidf_results, word_counts):
 				doc_data = {
 					"file_name": file.name,
@@ -43,18 +45,38 @@ class TFIDFMongoUploadView(APIView):
 					"uploaded_at": datetime.utcnow().isoformat()
 				}
 				file_id = documents_collection.insert_one(doc_data).inserted_id
+				file_ids.append(file_id)
 
-				response_data.append({
-					"file_id": str(file_id),
-					"file_name": file.name,
-					"file_size": file.size,
-					"word_count": word_count,
-					"metrics": metrics
-				})
+			# Вычисляем топ-50 слов с их IDF и средним TF
+			if tfidf_results:
+				num_words = len(tfidf_results[0])  # Учитываем случай, если слов меньше 50
+				top_words = []
+				for i in range(num_words):
+					word_data = tfidf_results[0][i]
+					word = word_data["word"]
+					idf = word_data["idf"]
+					tfs = [doc[i]["tf"] for doc in tfidf_results]  # Собираем TF из всех документов
+					avg_tf = sum(tfs) / len(tfs)  # Среднее TF
+					top_words.append({
+						"word": word,
+						"idf": round(idf, 6),
+						"avg_tf": round(avg_tf, 6)
+					})
+			else:
+				top_words = []
 
+			# Формируем ответ
 			return Response({
 				"message": "Files processed and stored successfully in MongoDB",
-				"results": response_data
+				"files": [
+					{
+						"file_id": str(file_id),
+						"file_name": file.name,
+						"file_size": file.size,
+						"word_count": word_count
+					} for file, word_count, file_id in zip(files, word_counts, file_ids)
+				],
+				"top_words": top_words
 			}, status=status.HTTP_200_OK)
 
 		except Exception as e:

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TF-IDF Upload</title>
     <style>
+        /* Your existing CSS remains unchanged */
         body {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           background: linear-gradient(135deg, #ece9e6, #ffffff);
@@ -245,7 +246,6 @@
         const statsDiv = document.getElementById('stats-result');
         const form = document.getElementById('upload-form');
         const clearButton = document.getElementById('clear-button');
-        const statsButton = document.getElementById('stats-button');
         const uploadButton = form.querySelector('button[type="submit"]');
         const fileInputLabel = document.querySelector('.custom-file-input');
 
@@ -331,6 +331,7 @@
               return;
             }
 
+            // Create table for top 50 words
             const table = document.createElement('table');
             const header = table.insertRow();
             ['Word', 'TF', 'IDF'].forEach(text => {
@@ -339,17 +340,16 @@
               header.appendChild(th);
             });
 
-            data.results.forEach(item => {
-              item.metrics.forEach(metric => {
-                const row = table.insertRow();
-                [metric.word, metric.tf, metric.idf].forEach((val, idx) => {
-                  const cell = row.insertCell();
-                  cell.textContent = idx === 0 || !val ? (val ?? '0') : Number(val).toFixed(6);
-                });
+            // Populate table with top_words
+            data.top_words.forEach(metric => {
+              const row = table.insertRow();
+              [metric.word, metric.avg_tf, metric.idf].forEach((val, idx) => {
+                const cell = row.insertCell();
+                cell.textContent = idx === 0 || !val ? (val ?? '0') : Number(val).toFixed(6);
               });
             });
 
-            resultDiv.innerHTML = `<h2>TF-IDF Results</h2>`;
+            resultDiv.innerHTML = `<h2>Top 50 Words by IDF</h2>`;
             resultDiv.appendChild(table);
 
             form.reset();
@@ -364,62 +364,8 @@
           }
         });
 
-        statsButton.addEventListener('click', async () => {
-          statsDiv.innerHTML = '<div class="loading"><span class="spinner"></span> Loading statistics...</div>';
-          try {
-            const response = await fetch('/api/upload/', {
-              method: 'GET'
-            });
-
-            if (!response.ok) {
-              throw new Error(`Server error: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            statsDiv.innerHTML = '<h2>Uploaded File Statistics</h2>';
-            if (data.length === 0) {
-              statsDiv.innerHTML += '<p>No statistics available.</p>';
-              return;
-            }
-
-            data.forEach(item => {
-              const statsItem = document.createElement('div');
-              statsItem.className = 'stats-item';
-              statsItem.innerHTML = `
-                <h3>File: ${item.file_name}</h3>
-                <p>Size: ${(item.file_size / 1024).toFixed(2)} KB</p>
-                <p>Word Count: ${item.word_count}</p>
-                <p>Uploaded: ${new Date(item.uploaded_at).toLocaleString()}</p>
-              `;
-
-              if (item.metrics.length > 0) {
-                const table = document.createElement('table');
-                const header = table.insertRow();
-                ['Word', 'TF', 'IDF'].forEach(text => {
-                  const th = document.createElement('th');
-                  th.textContent = text;
-                  header.appendChild(th);
-                });
-
-                item.metrics.forEach(metric => {
-                  const row = table.insertRow();
-                  ['word', 'tf', 'idf'].forEach(key => {
-                    const cell = row.insertCell();
-                    cell.textContent = (key === 'word' || !metric[key]) ? (metric[key] ?? '0') : Number(metric[key]).toFixed(6);
-                  });
-                });
-
-                statsItem.appendChild(table);
-              }
-
-              statsDiv.appendChild(statsItem);
-            });
-          } catch (err) {
-            console.error(err);
-            statsDiv.innerHTML = '<p class="error">Failed to load statistics.</p>';
-          }
-        });
+        // Note: The statsButton event listener is removed since there's no stats button in the HTML
+        // If you need stats functionality, let me know, and I can help add it back
       });
     </script>
 </body>
