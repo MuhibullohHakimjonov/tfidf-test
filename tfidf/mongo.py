@@ -1,21 +1,26 @@
 from pymongo import MongoClient
 from django.conf import settings
 
-client = MongoClient(settings.MONGO_URI)
-db = client[settings.MONGO_DB_NAME]
-
 
 def get_mongo_db():
-	return db
+	username = settings.MONGO['USERNAME']
+	password = settings.MONGO['PASSWORD']
+	host = settings.MONGO['HOST']
+	port = settings.MONGO['PORT']
+	db_name = settings.MONGO['DB_NAME']
+
+	uri = f"mongodb://{username}:{password}@{host}:{port}/?authSource=admin"
+	client = MongoClient(uri)
+	return client[db_name]
 
 
-def get_files_collection():
-	return db['files']
+def get_documents_collection():
+	return get_mongo_db()["documents"]
 
 
 def get_mongo_collections():
+	db = get_mongo_db()
 	return {
-		"client": client,
 		"db": db,
-		"files_collection": db["files"],
+		"documents_collection": db["documents"],
 	}

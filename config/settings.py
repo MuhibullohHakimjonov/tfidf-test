@@ -89,6 +89,11 @@ REST_FRAMEWORK = {
 	],
 }
 
-MONGO_URI = env('MONGO_URI')
 
-MONGO_DB_NAME = env('MONGO_DB_NAME')
+MONGO = {
+	'USERNAME': env('MONGO_USERNAME'),
+	'PASSWORD': env('MONGO_PASSWORD'),
+	'HOST': env('MONGO_HOST'),
+	'PORT': env.int('MONGO_PORT'),
+	'DB_NAME': env('MONGO_DB_NAME'),
+}
