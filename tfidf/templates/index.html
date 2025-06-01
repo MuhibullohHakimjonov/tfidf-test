@@ -304,8 +304,8 @@
 
           const formData = new FormData();
           for (let file of files) {
-            if (file.size > 9 * 1024 * 1024) {
-              resultDiv.innerHTML = `<p class="error">File "${file.name}" exceeds 9MB limit.</p>`;
+            if (file.size > 8 * 1024 * 1024) {
+              resultDiv.innerHTML = `<p class="error">File "${file.name}" exceeds 8MB limit.</p>`;
               return;
             }
             formData.append('file', file);
