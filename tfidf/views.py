@@ -17,70 +17,69 @@ class TFIDFMongoUploadView(APIView):
 		if not files:
 			return Response({"error": "No files provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-		if any(f.size > MAX_FILE_SIZE for f in files):
-			return Response({"error": "Each file must be under 8MB"}, status=status.HTTP_400_BAD_REQUEST)
+		oversized = [f.name for f in files if f.size > MAX_FILE_SIZE]
+		if oversized:
+			return Response(
+				{"error": f"Files too large: {', '.join(oversized)}"},
+				status=status.HTTP_400_BAD_REQUEST
+			)
 
 		try:
-			texts = []
-			for f in files:
-				text = f.read().decode('utf-8').strip()
-				texts.append(text)
+			texts = [f.read().decode('utf-8').strip() for f in files]
 		except UnicodeDecodeError:
 			return Response({"error": "Unable to decode one or more files"}, status=status.HTTP_400_BAD_REQUEST)
 
 		try:
-			# Вычисляем глобальную таблицу TF-IDF
 			tfidf_results, word_counts = compute_global_tfidf_table(texts)
 			documents_collection = get_documents_collection()
-			file_ids = []
 
-			# Сохраняем данные каждого документа в MongoDB
-			for file, text, metrics, word_count in zip(files, texts, tfidf_results, word_counts):
-				doc_data = {
-					"file_name": file.name,
-					"file_size": file.size,
-					"word_count": word_count,
+			now = datetime.utcnow().isoformat()
+
+			# Подготовка всех документов
+			documents = []
+			for f, text, tfidf, wc in zip(files, texts, tfidf_results, word_counts):
+				documents.append({
+					"file_name": f.name,
+					"file_size": f.size,
+					"word_count": wc,
 					"content": text,
-					"tfidf_data": metrics,
-					"uploaded_at": datetime.utcnow().isoformat()
-				}
-				file_id = documents_collection.insert_one(doc_data).inserted_id
-				file_ids.append(file_id)
+					"tfidf_data": tfidf,
+					"uploaded_at": now
+				})
 
-			# Вычисляем топ-50 слов с их IDF и средним TF
+			# Массовая вставка
+			result = documents_collection.insert_many(documents)
+			inserted_ids = result.inserted_ids
+
+			# Считаем топ-50 по IDF из первого документа
+			top_words = []
 			if tfidf_results:
-				num_words = len(tfidf_results[0])  # Учитываем случай, если слов меньше 50
-				top_words = []
-				for i in range(num_words):
-					word_data = tfidf_results[0][i]
-					word = word_data["word"]
-					idf = word_data["idf"]
-					tfs = [doc[i]["tf"] for doc in tfidf_results]  # Собираем TF из всех документов
-					avg_tf = sum(tfs) / len(tfs)  # Среднее TF
+				for i, item in enumerate(tfidf_results[0][:50]):
+					word = item["word"]
+					idf = item["idf"]
+					avg_tf = sum(doc[i]["tf"] for doc in tfidf_results if i < len(doc)) / len(tfidf_results)
 					top_words.append({
 						"word": word,
 						"idf": round(idf, 6),
 						"avg_tf": round(avg_tf, 6)
 					})
-			else:
-				top_words = []
 
-			# Формируем ответ
 			return Response({
 				"message": "Files processed and stored successfully in MongoDB",
 				"files": [
 					{
-						"file_id": str(file_id),
-						"file_name": file.name,
-						"file_size": file.size,
-						"word_count": word_count
-					} for file, word_count, file_id in zip(files, word_counts, file_ids)
+						"file_id": str(fid),
+						"file_name": f.name,
+						"file_size": f.size,
+						"word_count": wc
+					}
+					for f, wc, fid in zip(files, word_counts, inserted_ids)
 				],
 				"top_words": top_words
 			}, status=status.HTTP_200_OK)
 
 		except Exception as e:
-			return Response({"error": f"Failed to save metrics: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+			return Response({"error": f"Failed to process files: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MetricsView(APIView):
