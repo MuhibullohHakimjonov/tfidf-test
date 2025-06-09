@@ -68,7 +68,7 @@ const verifyEmail = async () => {
   }
 
   try {
-    const response = await axios.post('/api/user/verify-email/', {
+    const response = await axios.post('http://37.9.53.228/api/user/verify-email/', {
       email: email.value,
       code: code.value,
     });

@@ -61,7 +61,7 @@ const selectedCollectionId = ref(null);
 
 const fetchDocuments = async () => {
   try {
-    const response = await axios.get('api/documents/', {
+    const response = await axios.get('http://37.9.53.228/api/documents/', {
       withCredentials: true,
     });
     documents.value = response.data;
@@ -73,7 +73,7 @@ const fetchDocuments = async () => {
 
 const deleteDocument = async (docId) => {
   try {
-    await axios.delete(`api/documents/${docId}/delete/`);
+    await axios.delete(`http://37.9.53.228/api/documents/${docId}/delete/`);
     documents.value = documents.value.filter(doc => doc.id !== docId);
     showNotification("Документ удален успешно!", "green");
   } catch (error) {
@@ -85,7 +85,7 @@ const deleteDocument = async (docId) => {
 
 const fetchCollections = async () => {
   try {
-    const response = await axios.get('api/collections/');
+    const response = await axios.get('http://37.9.53.228/api/collections/');
     collections.value = response.data;
   } catch (error) {
     console.error('Error fetching collections:', error);
@@ -130,7 +130,7 @@ const showNotification = (message, color) => {
 const addToCollection = async () => {
   if (!selectedCollectionId.value || !selectedDocumentId.value) return;
   try {
-    await axios.post(`api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`);
+    await axios.post(`http://37.9.53.228/api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`);
     showNotification("Документ добавлен в коллекцию!", "green");
     closeModal();
   } catch (error) {

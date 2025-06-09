@@ -63,7 +63,7 @@ const collections = ref([]);
 
 const fetchCollections = async () => {
   try {
-    const response = await axios.get('api/collections/');
+    const response = await axios.get('http://37.9.53.228/api/collections/');
     collections.value = response.data;
     console.log('Fetched collections:', collections.value);
   } catch (error) {
@@ -73,7 +73,7 @@ const fetchCollections = async () => {
 };
 const deleteCollection = async (collectionId) => {
   try {
-    await axios.delete(`api/collection/${collectionId}/delete/`);
+    await axios.delete(`http://37.9.53.228/api/collection/${collectionId}/delete/`);
     collections.value = collections.value.filter(collection => collection.id !== collectionId);
     showNotification("Коллекция удалена успешно!", "green");
   } catch (error) {
@@ -108,7 +108,7 @@ const createCollection = async () => {
     return;
   }
   try {
-    await axios.post('api/collections/create/', { name: newCollectionName.value });
+    await axios.post('http://37.9.53.228/api/collections/create/', { name: newCollectionName.value });
     newCollectionName.value = '';
     await fetchCollections();
   } catch (error) {

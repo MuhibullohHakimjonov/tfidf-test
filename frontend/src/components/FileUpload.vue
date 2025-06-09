@@ -80,7 +80,7 @@ async function upload() {
       console.log(`Appending file ${index + 1}: ${file.name}`);
     });
 
-    const response = await axios.post('/api/upload/', formData, {
+    const response = await axios.post('http://37.9.53.228/api/upload/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
