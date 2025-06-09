@@ -146,14 +146,16 @@ class CollectionCreateSerializer(serializers.Serializer):
 	name = serializers.CharField(max_length=255)
 
 
+class WordStatsSerializer(serializers.Serializer):
+	word = serializers.CharField()
+	total_tf = serializers.FloatField()
+	idf = serializers.FloatField()
+
+
 class CollectionStatisticsSerializer(serializers.Serializer):
 	collection_id = serializers.IntegerField()
 	documents_count = serializers.IntegerField()
-	top_words = serializers.ListField(
-		child=serializers.DictField(
-			child=serializers.FloatField()  # для tf/idf, строка для слова
-		)
-	)
+	top_words = WordStatsSerializer(many=True)
 
 	@classmethod
 	def from_collection(cls, collection: Collection):
