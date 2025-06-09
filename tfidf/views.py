@@ -1,85 +1,33 @@
-from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from .mongo import get_documents_collection, get_mongo_collections
-from .utils import compute_global_tfidf_table
 from datetime import datetime
+from rest_framework import status, permissions
+from bson import ObjectId
+from django.http import Http404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
-MAX_FILE_SIZE = 8 * 1024 * 1024
+from .models import Document, Collection
+from .mongo import get_documents_collection, get_mongo_collections
+from .serializers import CollectionSerializer, DocumentSerializer, CollectionCreateSerializer, TFIDFUploadSerializer, \
+	DocumentStatisticsSerializer, CollectionStatisticsSerializer
+
 
 
 class TFIDFMongoUploadView(APIView):
 	parser_classes = [MultiPartParser]
+	permission_classes = [permissions.IsAuthenticated]
 
 	def post(self, request):
-		files = request.FILES.getlist("file")
-		if not files:
-			return Response({"error": "No files provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-		oversized = [f.name for f in files if f.size > MAX_FILE_SIZE]
-		if oversized:
-			return Response(
-				{"error": f"Files too large: {', '.join(oversized)}"},
-				status=status.HTTP_400_BAD_REQUEST
-			)
-
-		try:
-			texts = [f.read().decode('utf-8').strip() for f in files]
-		except UnicodeDecodeError:
-			return Response({"error": "Unable to decode one or more files"}, status=status.HTTP_400_BAD_REQUEST)
-
-		try:
-			tfidf_results, word_counts = compute_global_tfidf_table(texts)
-			documents_collection = get_documents_collection()
-
-			now = datetime.utcnow().isoformat()
-
-			# Подготовка всех документов
-			documents = []
-			for f, text, tfidf, wc in zip(files, texts, tfidf_results, word_counts):
-				documents.append({
-					"file_name": f.name,
-					"file_size": f.size,
-					"word_count": wc,
-					"content": text,
-					"tfidf_data": tfidf,
-					"uploaded_at": now
-				})
-
-			# Массовая вставка
-			result = documents_collection.insert_many(documents)
-			inserted_ids = result.inserted_ids
-
-			# Считаем топ-50 по IDF из первого документа
-			top_words = []
-			if tfidf_results:
-				for i, item in enumerate(tfidf_results[0][:50]):
-					word = item["word"]
-					idf = item["idf"]
-					avg_tf = sum(doc[i]["tf"] for doc in tfidf_results if i < len(doc)) / len(tfidf_results)
-					top_words.append({
-						"word": word,
-						"idf": round(idf, 6),
-						"avg_tf": round(avg_tf, 6)
-					})
-
+		serializer = TFIDFUploadSerializer(data=request.data, context={'request': request})
+		if serializer.is_valid():
+			result = serializer.save()
 			return Response({
 				"message": "Files processed and stored successfully in MongoDB",
-				"files": [
-					{
-						"file_id": str(fid),
-						"file_name": f.name,
-						"file_size": f.size,
-						"word_count": wc
-					}
-					for f, wc, fid in zip(files, word_counts, inserted_ids)
-				],
-				"top_words": top_words
+				**result
 			}, status=status.HTTP_200_OK)
-
-		except Exception as e:
-			return Response({"error": f"Failed to process files: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MetricsView(APIView):
@@ -112,4 +60,127 @@ class MetricsView(APIView):
 
 class VersionView(APIView):
 	def get(self, request):
-		return Response({'version': '1.3'}, status=status.HTTP_200_OK)
+		return Response({'version': '1.4'}, status=status.HTTP_200_OK)
+
+
+class UserDocumentListView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request):
+		docs = Document.objects.filter(user=request.user)
+		serializer = DocumentSerializer(docs, many=True)
+		return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DocumentContentView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request, document_id):
+		doc = get_object_or_404(Document, id=document_id, user=request.user)
+		mongo_doc = get_documents_collection().find_one({"_id": ObjectId(doc.mongo_id)})
+		if not mongo_doc:
+			raise Http404("Document not found in MongoDB")
+		return Response({"content": mongo_doc.get("content", "")})
+
+
+class DocumentStatisticsView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request, document_id):
+		doc = get_object_or_404(Document, id=document_id, user=request.user)
+		mongo_doc = get_documents_collection().find_one({"_id": ObjectId(doc.mongo_id)})
+		if not mongo_doc:
+			raise Http404("Statistics not found")
+
+		mongo_doc["tfidf_data"] = mongo_doc.get("tfidf_data", [])[:50]
+
+		serializer = DocumentStatisticsSerializer(
+			mongo_doc,
+			context={"document": doc}
+		)
+		return Response(serializer.data)
+
+
+class DocumentDeleteView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def delete(self, request, document_id):
+		doc = get_object_or_404(Document, id=document_id, user=request.user)
+		# Удаляем из MongoDB
+		get_documents_collection().delete_one({"_id": ObjectId(doc.mongo_id)})
+		doc.delete()
+		return Response({"message": "Document deleted"})
+
+
+class CollectionCreateView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+	serializer_class = CollectionCreateSerializer
+
+	def post(self, request):
+		serializer = self.serializer_class(data=request.data)
+		if serializer.is_valid():
+			name = serializer.validated_data['name']
+			collection = Collection.objects.create(user=request.user, name=name)
+			return Response({"id": collection.id, "name": collection.name}, status=status.HTTP_201_CREATED)
+		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CollectionListView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request):
+		collections = Collection.objects.filter(user=request.user)
+		serializer = CollectionSerializer(collections, many=True)
+		return Response(serializer.data)
+
+
+class CollectionDetailView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request, collection_id):
+		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
+		serializer = CollectionSerializer(collection)
+		return Response({"documents_id": serializer.data})
+
+
+class CollectionStatisticsView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request, collection_id):
+		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
+		try:
+			serializer = CollectionStatisticsSerializer.from_collection(collection)
+			return Response(serializer.data)
+		except ValidationError as ve:
+			return Response({"error": str(ve)}, status=404)
+		except Exception as e:
+			return Response({"error": f"Failed to compute statistics: {e}"}, status=500)
+
+
+class AddDocumentToCollectionView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def post(self, request, collection_id, document_id):
+		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
+		document = get_object_or_404(Document, id=document_id, user=request.user)
+		collection.documents.add(document)
+		return Response({"message": "Document added to collection"})
+
+
+class RemoveDocumentFromCollectionView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def delete(self, request, collection_id, document_id):
+		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
+		document = get_object_or_404(Document, id=document_id, user=request.user)
+		collection.documents.remove(document)
+		return Response({"message": "Document removed from collection"})
+
+
+class DeleteCollectionView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def delete(self, request, collection_id):
+		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
+		collection.delete()
+		return Response({"message": "Document deleted"})

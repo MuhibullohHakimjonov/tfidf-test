@@ -13,22 +13,15 @@ def compute_global_tfidf_table(documents):
 	N = len(documents)
 	df = defaultdict(int)
 	tokenized_docs = []
-
-	# Step 1: Tokenize & compute DF
 	for doc in documents:
 		tokens = tokenize(doc)
 		tokenized_docs.append(tokens)
 		for word in set(tokens):
 			df[word] += 1
 
-	# Step 2: Compute IDF
 	global_idf = {word: math.log(N / count) for word, count in df.items()}
-
-	# Step 3: Top 50 by IDF
 	top_50_words = sorted(global_idf.items(), key=lambda x: x[1], reverse=True)[:50]
 	top_words = [word for word, _ in top_50_words]
-
-	# Step 4: Compute TF
 	results = []
 	word_counts = []
 	for tokens in tokenized_docs:
