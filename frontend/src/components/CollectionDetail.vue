@@ -104,7 +104,7 @@ const fetchCollectionDetails = async () => {
 
 const fetchCollectionStatistics = async () => {
   try {
-    const response = await axios.get(`api/collections/${route.params.id}/statistics/`);
+    const response = await axios.get(`/api/collections/${route.params.id}/statistics/`);
     console.log("Statistics response:", response.data);
     collectionStatistics.value = response.data;
   } catch (err) {
@@ -115,14 +115,12 @@ const fetchCollectionStatistics = async () => {
 
 
 
+
 const sortedTopWords = computed(() => {
-  const topWords = collectionStatistics.value.top_words;
-  if (!Array.isArray(topWords)) {
-    console.warn("Expected top_words to be an array, got:", topWords);
-    return [];
-  }
+  const topWords = collectionStatistics.value.top_words || [];
   return [...topWords].sort((a, b) => b.idf - a.idf);
 });
+
 
 
 const removeDocument = async (documentId) => {
