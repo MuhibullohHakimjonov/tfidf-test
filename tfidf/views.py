@@ -1,4 +1,5 @@
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser
 from datetime import datetime
 from rest_framework import status, permissions
@@ -60,16 +61,19 @@ class MetricsView(APIView):
 
 class VersionView(APIView):
 	def get(self, request):
-		return Response({'version': '1.4'}, status=status.HTTP_200_OK)
+		return Response({'version': '2.0'}, status=status.HTTP_200_OK)
 
 
 class UserDocumentListView(APIView):
 	permission_classes = [permissions.IsAuthenticated]
 
 	def get(self, request):
-		docs = Document.objects.filter(user=request.user)
-		serializer = DocumentSerializer(docs, many=True)
-		return Response(serializer.data, status=status.HTTP_200_OK)
+		paginator = PageNumberPagination()
+		paginator.page_size = 20
+		queryset = Document.objects.filter(user=request.user)
+		result_page = paginator.paginate_queryset(queryset, request)
+		serializer = DocumentSerializer(result_page, many=True)
+		return paginator.get_paginated_response(serializer.data)
 
 
 class DocumentContentView(APIView):
@@ -106,7 +110,6 @@ class DocumentDeleteView(APIView):
 
 	def delete(self, request, document_id):
 		doc = get_object_or_404(Document, id=document_id, user=request.user)
-		# Удаляем из MongoDB
 		get_documents_collection().delete_one({"_id": ObjectId(doc.mongo_id)})
 		doc.delete()
 		return Response({"message": "Document deleted"})
@@ -129,9 +132,12 @@ class CollectionListView(APIView):
 	permission_classes = [permissions.IsAuthenticated]
 
 	def get(self, request):
+		paginator = PageNumberPagination()
+		paginator.page_size = 20
 		collections = Collection.objects.filter(user=request.user)
-		serializer = CollectionSerializer(collections, many=True)
-		return Response(serializer.data)
+		result_page = paginator.paginate_queryset(collections, request)
+		serializer = CollectionSerializer(result_page, many=True)
+		return paginator.get_paginated_response(serializer.data)
 
 
 class CollectionDetailView(APIView):
