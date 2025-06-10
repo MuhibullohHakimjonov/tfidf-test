@@ -10,7 +10,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from '../api';
+import axios from '../api.js';
 
 const route = useRoute();
 const content = ref('');
