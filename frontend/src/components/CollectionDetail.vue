@@ -103,12 +103,14 @@ const fetchCollectionDetails = async () => {
 const fetchCollectionStatistics = async () => {
   try {
     const response = await axios.get(`api/collections/${route.params.id}/statistics/`);
+    console.log("Statistics response:", response.data);
     collectionStatistics.value = response.data;
   } catch (err) {
     console.error('Не удалось загрузить статистику коллекции:', err);
     error.value = 'Не удалось загрузить статистику коллекции.';
   }
 };
+
 
 const sortedTopWords = computed(() => {
   return [...collectionStatistics.value.top_words].sort((a, b) => b.idf - a.idf);
