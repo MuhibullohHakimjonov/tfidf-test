@@ -68,7 +68,7 @@ const verifyEmail = async () => {
   }
 
   try {
-    const response = await axios.post('user/verify-email/', {
+    const response = await axios.post('api/user/verify-email/', {
       email: email.value,
       code: code.value,
     });
@@ -100,7 +100,7 @@ const resendCode = async () => {
   showSuccessNotification.value = false;
 
   try {
-    const response = await axios.post('user/resend-code/', {
+    const response = await axios.post('api/user/resend-code/', {
       email: email.value,
     });
     successNotificationMessage.value = response.data.message || 'Новый код отправлен на ваш email.';

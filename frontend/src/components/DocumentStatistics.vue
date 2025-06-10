@@ -36,7 +36,7 @@ onMounted(async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get(`documents/${route.params.id}/statistics/`);
+    const response = await axios.get(`api/documents/${route.params.id}/statistics/`);
     statistics.value = response.data.tfidf_data; // Access the tfidf_data field
   } catch (err) {
     error.value = 'Не удалось загрузить статистику документа.';

@@ -91,7 +91,7 @@ const error = ref(null);
 
 const fetchCollection = async () => {
   try {
-    const response = await axios.get(`collections/${route.params.id}/`);
+    const response = await axios.get(`api/collections/${route.params.id}/`);
     collection.value = response.data;
   } catch (err) {
     console.error('Не удалось загрузить коллекцию:', err);
@@ -101,11 +101,11 @@ const fetchCollection = async () => {
 
 const fetchCollectionStatistics = async () => {
   try {
-    const response = await axios.get(`collections/${route.params.id}/statistics/`);
+    const response = await axios.get(`api/collections/${route.params.id}/statistics/`);
     collection.value.documents_count = response.data.documents_count || 0;
     collection.value.top_words = response.data.top_words || [];
     if (!collection.value.documents_id.name) {
-      const collResponse = await axios.get(`collections/${route.params.id}/`);
+      const collResponse = await axios.get(`api/collections/${route.params.id}/`);
       collection.value.documents_id.name = collResponse.data.documents_id.name;
     }
   } catch (err) {
@@ -121,7 +121,7 @@ const sortedTopWords = computed(() => {
 const removeDocument = async (documentId) => {
   if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
   try {
-    await axios.delete(`collection/${route.params.id}/${documentId}/delete/`);
+    await axios.delete(`api/collection/${route.params.id}/${documentId}/delete/`);
     collection.value.documents_id.documents = collection.value.documents_id.documents.filter(
       doc => doc.id !== documentId
     );
