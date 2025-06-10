@@ -114,9 +114,16 @@ const fetchCollectionStatistics = async () => {
 };
 
 
+
 const sortedTopWords = computed(() => {
-  return [...collectionStatistics.value.top_words].sort((a, b) => b.idf - a.idf);
+  const topWords = collectionStatistics.value.top_words;
+  if (!Array.isArray(topWords)) {
+    console.warn("Expected top_words to be an array, got:", topWords);
+    return [];
+  }
+  return [...topWords].sort((a, b) => b.idf - a.idf);
 });
+
 
 const removeDocument = async (documentId) => {
   if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
