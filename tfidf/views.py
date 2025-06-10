@@ -70,7 +70,7 @@ class UserDocumentListView(APIView):
 	def get(self, request):
 		paginator = PageNumberPagination()
 		paginator.page_size = 20
-		queryset = Document.objects.filter(user=request.user)
+		queryset = Document.objects.filter(user=request.user).order_by('-id')
 		result_page = paginator.paginate_queryset(queryset, request)
 		serializer = DocumentSerializer(result_page, many=True)
 		return paginator.get_paginated_response(serializer.data)
@@ -134,7 +134,7 @@ class CollectionListView(APIView):
 	def get(self, request):
 		paginator = PageNumberPagination()
 		paginator.page_size = 20
-		collections = Collection.objects.filter(user=request.user)
+		collections = Collection.objects.filter(user=request.user).order_by('-id')
 		result_page = paginator.paginate_queryset(collections, request)
 		serializer = CollectionSerializer(result_page, many=True)
 		return paginator.get_paginated_response(serializer.data)
