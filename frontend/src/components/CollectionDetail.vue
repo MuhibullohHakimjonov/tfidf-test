@@ -3,7 +3,10 @@
     <h2 v-if="loading" class="text-xl mb-4">Загрузка...</h2>
     <div v-else-if="error" class="text-red-500 text-center">{{ error }}</div>
     <div v-else>
-      <h2 class="text-xl mb-4">{{ collectionDetails.collections_id.name }}</h2>
+      <h2 class="text-xl mb-4" v-if="collectionDetails && collectionDetails.collections_id">
+          {{ collectionDetails.collections_id.name }}
+        </h2>
+
 
       <!-- Documents in Collection -->
       <h3 class="text-lg mb-2">Документы в коллекции</h3>
