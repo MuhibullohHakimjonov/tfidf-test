@@ -10,7 +10,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from 'axios';
+import axios from '../api';
 
 const route = useRoute();
 const content = ref('');
@@ -22,12 +22,12 @@ onMounted(async () => {
   error.value = null;
   try {
     const response = await axios.get(`documents/${route.params.id}/`);
-    console.log(response, "is good");
+    console.log(import.meta.env.VITE_API_URL);
     content.value = response.data.content; // Access the content field
   } catch (err) {
     error.value = 'Не удалось загрузить содержимое документа.';
     console.error(err);
-    console.log(response);
+    console.log(import.meta.env.VITE_API_URL);
   } finally {
     loading.value = false;
     console.log(import.meta.env.VITE_API_URL);
