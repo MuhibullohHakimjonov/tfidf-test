@@ -78,13 +78,13 @@ const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 
 const collection = ref({
-  collections_id: {
-    name: "",
-    documents: []
-  },
   documents_count: 0,
-  top_words: []
+  top_words: [],
+  collections_id: {
+    name: ''
+  }
 });
+
 const loading = ref(true);
 const error = ref(null);
 
