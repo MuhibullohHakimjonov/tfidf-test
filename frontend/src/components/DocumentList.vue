@@ -86,8 +86,8 @@ async function fetchDocuments(page = 1) {
   if (!isAuthenticated.value) return;
 
   try {
-    const response = await axios.get('/api/documents/', {
-      params: { page },
+    // Используем шаблонную строку для подстановки page
+    const response = await axios.get(`http://37.9.53.228/api/documents/?page=${page}`, {
       withCredentials: true
     });
     const data = response.data;
@@ -103,7 +103,9 @@ async function fetchDocuments(page = 1) {
 // Fetch collections (for modal) - simple first page
 async function fetchCollections() {
   try {
-    const response = await axios.get('/api/collections/', { params: { page: 1 } });
+    const response = await axios.get(`http://37.9.53.228/api/collections/?page=1`, {
+      withCredentials: true
+    });
     collections.value = response.data.results;
   } catch (error) {
     console.error('Error fetching collections:', error);
@@ -114,7 +116,7 @@ async function fetchCollections() {
 // Action handlers
 async function deleteDocument(docId) {
   try {
-    await axios.delete(`/api/documents/${docId}/delete/`, { withCredentials: true });
+    await axios.delete(`http://37.9.53.228/api/documents/${docId}/delete/`, { withCredentials: true });
     fetchDocuments(currentPage.value);
   } catch (error) {
     console.error('Error deleting document:', error);
@@ -136,9 +138,8 @@ async function addToCollection() {
   if (!selectedCollectionId.value || !selectedDocumentId.value) return;
   try {
     await axios.post(
-      `/api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`,
-      {},
-      { withCredentials: true }
+      `http://37.9.53.228/api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`,
+      {}, { withCredentials: true }
     );
     closeModal();
   } catch (error) {
