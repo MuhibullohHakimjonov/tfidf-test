@@ -79,8 +79,12 @@ REDIS_PORT=redis_port
 
 3. Построить и запустить контейнеры:
 ```bash
-  docker-compose up -d
+  docker-compose up --build -d
 ```
+
+
+
+
 📦 Версия приложения
 v2.0
 
