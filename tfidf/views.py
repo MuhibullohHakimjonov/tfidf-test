@@ -146,7 +146,7 @@ class CollectionDetailView(APIView):
 	def get(self, request, collection_id):
 		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
 		serializer = CollectionSerializer(collection)
-		return Response({"collections_id": serializer.data})
+		return Response(serializer.data)
 
 
 class CollectionStatisticsView(APIView):

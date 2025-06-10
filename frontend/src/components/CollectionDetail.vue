@@ -1,176 +1,89 @@
 <template>
   <div class="p-4">
-    <h2 v-if="loading" class="text-xl mb-4">Загрузка...</h2>
-    <div v-else-if="error" class="text-red-500 text-center">{{ error }}</div>
-    <div v-else>
-      <!-- Only show if collectionDetails and collections_id exist -->
-      <h2 class="text-xl mb-4" v-if="collectionDetails && collectionDetails.collections_id">
-        {{ collectionDetails.collections_id.name }}
-      </h2>
+    <h1 class="text-2xl font-bold mb-4">Collection Detail: {{ collection.name }}</h1>
+    <p class="mb-4">Number of Documents: {{ collection.documents.length }}</p>
 
-      <!-- Documents in Collection -->
-      <h3 class="text-lg mb-2" v-if="collectionDetails && collectionDetails.collections_id">Документы в коллекции</h3>
-      <table
-        v-if="collectionDetails &&
-              collectionDetails.collections_id &&
-              collectionDetails.collections_id.documents &&
-              collectionDetails.collections_id.documents.length"
-        class="w-full border border-collapse text-sm mb-6"
-      >
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border p-2 text-left">Название документа</th>
-            <th class="border p-2 text-left">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="doc in collectionDetails.collections_id.documents" :key="doc.id">
-            <td class="border p-2">
-              <router-link :to="`/documents/${doc.id}`" class="text-blue-500 hover:underline">
-                {{ doc.name }}
-              </router-link>
-            </td>
-            <td class="border p-2 flex justify-end">
-              <button @click="removeDocument(doc.id)" class="btn btn-danger">🗑️</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="text-sm text-gray-600 mb-6">Нет документов в этой коллекции.</p>
+    <h2 class="text-xl font-semibold mb-2">Documents:</h2>
+    <ul class="list-disc pl-5">
+      <li v-for="doc in collection.documents" :key="doc.id" class="mb-2">
+        {{ doc.name }} ({{ doc.word_count }} words)
+        <button
+          @click="deleteDocument(doc.id)"
+          class="ml-4 px-2 py-1 bg-red-500 text-white rounded"
+        >
+          Delete
+        </button>
+      </li>
+    </ul>
 
-      <!-- Collection Statistics -->
-      <h3 class="text-lg mb-2">Статистика коллекции</h3>
-      <p class="text-sm text-gray-600 mb-4" v-if="collectionStatistics">
-        Количество документов: {{ collectionStatistics.documents_count }}
-      </p>
-      <h4 class="text-md mb-2">Топ слова (по убыванию IDF)</h4>
-      <table v-if="sortedTopWords.length" class="w-full border border-collapse text-sm">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border p-2 text-left">Слово</th>
-            <th class="border p-2 text-left">TF</th>
-            <th class="border p-2 text-left">IDF</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="word in sortedTopWords" :key="word.word">
-            <td class="border p-2">{{ word.word }}</td>
-            <td class="border p-2">{{ word.total_tf.toFixed(6) }}</td>
-            <td class="border p-2">{{ word.idf.toFixed(6) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="text-sm text-gray-600">Нет данных по статистике.</p>
+    <h2 class="text-xl font-semibold mt-6 mb-2">Statistics:</h2>
+    <div v-if="statistics">
+      <p>Documents Count: {{ statistics.documents_count }}</p>
+      <h3 class="font-semibold mt-2">Top Words:</h3>
+      <ul class="list-disc pl-5">
+        <li v-for="word in statistics.top_words" :key="word.word">
+          {{ word.word }} (TF: {{ word.total_tf }}, IDF: {{ word.idf }})
+        </li>
+      </ul>
     </div>
+    <div v-else>Loading statistics...</div>
   </div>
 </template>
 
-
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import axios from '../api';
-import { useAuthStore } from '../stores/auth';
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 
 const route = useRoute();
-const router = useRouter();
-const authStore = useAuthStore();
-const isAuthenticated = computed(() => authStore.isAuthenticated);
+const collection = ref({ documents: [] });
+const statistics = ref(null);
 
-const collectionDetails = ref({
-  collections_id: {
-    name: '',
-    documents: []
-  }
-});
-
-const collectionStatistics = ref({
-  documents_count: 0,
-  top_words: []
-});
-
-const loading = ref(true);
-const error = ref(null);
-
-const fetchCollectionDetails = async () => {
+const fetchCollection = async () => {
   try {
-    const response = await axios.get(`api/collections/${route.params.id}/`);
-    collectionDetails.value = response.data;
-  } catch (err) {
-    console.error('Не удалось загрузить детали коллекции:', err);
-    error.value = 'Не удалось загрузить детали коллекции.';
+    const response = await fetch(`/api/collections/${route.params.id}/`);
+    collection.value = await response.json();
+  } catch (error) {
+    console.error('Failed to load collection:', error);
   }
 };
 
-const fetchCollectionStatistics = async () => {
+const fetchStatistics = async () => {
   try {
-    const response = await axios.get(`/api/collections/${route.params.id}/statistics/`);
-    console.log("Statistics response:", response.data);
-    collectionStatistics.value = response.data;
-  } catch (err) {
-    console.error('Не удалось загрузить статистику коллекции:', err);
-    error.value = 'Не удалось загрузить статистику коллекции.';
+    const response = await fetch(`/api/collections/${route.params.id}/statistics/`);
+    statistics.value = await response.json();
+  } catch (error) {
+    console.error('Failed to load statistics:', error);
   }
 };
 
-
-
-
-const sortedTopWords = computed(() => {
-  const topWords = collectionStatistics.value.top_words || [];
-  return [...topWords].sort((a, b) => b.idf - a.idf);
-});
-
-
-
-const removeDocument = async (documentId) => {
-  if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
+const deleteDocument = async (documentId) => {
   try {
-    await axios.delete(`api/collection/${route.params.id}/${documentId}/delete/`);
-    // remove from local state
-    collectionDetails.value.collections_id.documents = collectionDetails.value.collections_id.documents.filter(
-      doc => doc.id !== documentId
-    );
-    await fetchCollectionStatistics();
-    showNotification('Документ удален из коллекции!', 'green');
-  } catch (err) {
-    console.error('Не удалось удалить документ:', err);
-    showNotification('Не удалось удалить документ!', 'red');
+    const response = await fetch(`/api/documents/${documentId}/`, {
+      method: 'DELETE',
+    });
+
+    if (response.ok) {
+      collection.value.documents = collection.value.documents.filter(doc => doc.id !== documentId);
+      // Refresh statistics after deletion
+      fetchStatistics();
+    } else {
+      console.error('Failed to delete document');
+    }
+  } catch (error) {
+    console.error('Error deleting document:', error);
   }
 };
 
-const showNotification = (message, backgroundColor) => {
-  const notification = document.createElement("div");
-  notification.innerText = message;
-  notification.style.position = "fixed";
-  notification.style.top = "60px";
-  notification.style.right = "10px";
-  notification.style.background = backgroundColor;
-  notification.style.color = "white";
-  notification.style.padding = "20px";
-  notification.style.borderRadius = "6px";
-  notification.style.zIndex = "100";
-
-  document.body.appendChild(notification);
-
-  setTimeout(() => {
-    notification.remove();
-  }, 3000);
-};
-
-onMounted(async () => {
-  if (!isAuthenticated.value) {
-    console.warn('Пользователь не авторизован, перенаправляем на страницу входа.');
-    router.push('/login');
-    return;
-  }
-
-  loading.value = true;
-  error.value = null;
-  await Promise.all([fetchCollectionDetails(), fetchCollectionStatistics()]);
-  loading.value = false;
+onMounted(() => {
+  fetchCollection();
+  fetchStatistics();
 });
 </script>
+
+<style scoped>
+/* optional custom styling */
+</style>
+
 
 
 
