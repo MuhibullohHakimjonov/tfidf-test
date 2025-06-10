@@ -3,12 +3,12 @@
     <h2 v-if="loading" class="text-xl mb-4">Загрузка...</h2>
     <div v-else-if="error" class="text-red-500 text-center">{{ error }}</div>
     <div v-else>
-      <h2 class="text-xl mb-4">{{ collection.collections_id.name }}</h2>
-      
+      <h2 class="text-xl mb-4">{{ collection.name }}</h2>
+
       <!-- Documents in Collection -->
       <h3 class="text-lg mb-2">Документы в коллекции</h3>
       <table
-        v-if="collection.collections_id.documents && collection.collections_id.documents.length"
+        v-if="collection.documents && collection.documents.length"
         class="w-full border border-collapse text-sm mb-6"
       >
         <thead class="bg-gray-100">
@@ -18,7 +18,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="doc in collection.collections_id.documents" :key="doc.id">
+          <tr v-for="doc in collection.documents" :key="doc.id">
             <td class="border p-2">
               <router-link
                 :to="`/documents/${doc.id}`"
@@ -28,19 +28,14 @@
               </router-link>
             </td>
             <td class="border p-2 flex justify-end">
-              <!-- Delete button with trash icon -->
-              <button @click="removeDocument(doc.id)" class="btn btn-danger">
-                🗑️
-              </button>
+              <button @click="removeDocument(doc.id)" class="btn btn-danger">🗑️</button>
             </td>
           </tr>
         </tbody>
       </table>
-      <p v-else class="text-sm text-gray-600 mb-6">
-        Нет документов в этой коллекции.
-      </p>
+      <p v-else class="text-sm text-gray-600 mb-6">Нет документов в этой коллекции.</p>
 
-      <!-- Collection Statistics (unchanged) -->
+      <!-- Collection Statistics -->
       <h3 class="text-lg mb-2">Статистика коллекции</h3>
       <p class="text-sm text-gray-600 mb-4">
         Количество документов: {{ collection.documents_count }}
@@ -78,11 +73,11 @@ const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 
 const collection = ref({
+  id: null,
+  name: '',
+  documents: [],
   documents_count: 0,
-  top_words: [],
-  collections_id: {
-    name: ''
-  }
+  top_words: []
 });
 
 const loading = ref(true);
@@ -90,26 +85,21 @@ const error = ref(null);
 
 const fetchCollection = async () => {
   try {
-    const response = await axios.get(`api/collections/${route.params.id}/`);
-    collection.value = response.data;
-  } catch (err) {
-    console.error('Не удалось загрузить коллекцию:', err);
-    error.value = 'Не удалось загрузить коллекцию.';
-  }
-};
+    const [collectionRes, statsRes] = await Promise.all([
+      axios.get(`api/collections/${route.params.id}/`),
+      axios.get(`api/collections/${route.params.id}/statistics/`)
+    ]);
 
-const fetchCollectionStatistics = async () => {
-  try {
-    const response = await axios.get(`api/collections/${route.params.id}/statistics/`);
-    collection.value.documents_count = response.data.documents_count || 0;
-    collection.value.top_words = response.data.top_words || [];
-    if (!collection.value.collections_id.name) {
-      const collResponse = await axios.get(`api/collections/${route.params.id}/`);
-      collection.value.collections_id.name = collResponse.data.collections_id.name;
-    }
+    collection.value = {
+      id: collectionRes.data.id,
+      name: collectionRes.data.collections_id?.name || '',
+      documents: collectionRes.data.collections_id?.documents || [],
+      documents_count: statsRes.data.documents_count || 0,
+      top_words: statsRes.data.top_words || []
+    };
   } catch (err) {
-    console.error('Не удалось загрузить статистику коллекции:', err);
-    error.value = 'Не удалось загрузить статистику коллекции.';
+    console.error('Ошибка при загрузке коллекции:', err);
+    error.value = 'Не удалось загрузить данные коллекции.';
   }
 };
 
@@ -121,13 +111,11 @@ const removeDocument = async (documentId) => {
   if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
   try {
     await axios.delete(`api/collection/${route.params.id}/${documentId}/delete/`);
-    collection.value.collections_id.documents = collection.value.collections_id.documents.filter(
-      doc => doc.id !== documentId
-    );
-    await fetchCollectionStatistics();
+    collection.value.documents = collection.value.documents.filter(doc => doc.id !== documentId);
+    await fetchCollection(); // перезагрузка данных после удаления
     showNotification('Документ удален из коллекции!', 'green');
   } catch (err) {
-    console.error('Не удалось удалить документ:', err);
+    console.error('Ошибка при удалении документа:', err);
     showNotification('Не удалось удалить документ!', 'red');
   }
 };
@@ -143,12 +131,9 @@ const showNotification = (message, backgroundColor) => {
   notification.style.padding = "20px";
   notification.style.borderRadius = "6px";
   notification.style.zIndex = "100";
-  
+
   document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.remove();
-  }, 3000);
+  setTimeout(() => notification.remove(), 3000);
 };
 
 onMounted(async () => {
@@ -160,7 +145,7 @@ onMounted(async () => {
 
   loading.value = true;
   error.value = null;
-  await Promise.all([fetchCollection(), fetchCollectionStatistics()]);
+  await fetchCollection();
   loading.value = false;
 });
 </script>
