@@ -70,9 +70,9 @@ const currentPage = ref(1);
 const nextPage = ref(null);
 const prevPage = ref(null);
 
-const fetchCollections = async () => {
+const fetchCollections = async (page = 1) => {
   try {
-    const response = await axios.get('http://37.9.53.228/api/collections/');
+    const response = await axios.get(`http://37.9.53.228/api/collections/?page=${page}`);
     collections.value = response.data.results;
     nextPage.value = response.data.next;
     prevPage.value = response.data.previous;
@@ -83,6 +83,7 @@ const fetchCollections = async () => {
     collections.value = [];
   }
 };
+
 const deleteCollection = async (collectionId) => {
   try {
     await axios.delete(`http://37.9.53.228/api/collection/${collectionId}/delete/`);
