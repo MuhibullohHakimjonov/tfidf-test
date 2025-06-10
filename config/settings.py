@@ -23,12 +23,11 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[
-    "http://localhost",
-    "http://localhost:5173",
+	"http://localhost",
+	"http://localhost:5173",
 ])
 
 CORS_ALLOW_CREDENTIALS = True
-
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
 
@@ -116,6 +115,8 @@ REST_FRAMEWORK = {
 		'user': '100/minute',
 	},
 	'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+	'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+	'PAGE_SIZE': 20,
 }
 
 DATABASES = {

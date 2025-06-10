@@ -20,6 +20,12 @@
         </tr>
       </tbody>
     </table>
+    <div v-if="documents.length" class="pagination mt-4">
+      <button @click="fetchDocuments(currentPage - 1)" :disabled="!prevPage" class="btn pagination-btn">Предыдущая</button>
+      <span class="mx-2">Страница {{ currentPage }}</span>
+      <button @click="fetchDocuments(currentPage + 1)" :disabled="!nextPage" class="btn pagination-btn">Следующая</button>
+    </div>
+
     <p v-else class="no-docs-text">Нет загруженных документов.</p>
 
     <!-- Modal for selecting collection -->
@@ -58,13 +64,19 @@ const collections = ref([]);
 const showModal = ref(false);
 const selectedDocumentId = ref(null);
 const selectedCollectionId = ref(null);
+const currentPage = ref(1);
+const nextPage = ref(null);
+const prevPage = ref(null);
 
 const fetchDocuments = async () => {
   try {
-    const response = await axios.get('http://37.9.53.228/api/documents/', {
+    const response = await axios.get('http://37.9.53.228/api/documents/?page=${page}', {
       withCredentials: true,
     });
-    documents.value = response.data;
+    documents.value = response.data.results;
+    nextPage.value = response.data.next;
+    prevPage.value = response.data.previous;
+    currentPage.value = page;
   } catch (error) {
     console.error('Error fetching documents:', error);
     documents.value = [];
@@ -142,7 +154,7 @@ const addToCollection = async () => {
 
 onMounted(() => {
   if (isAuthenticated.value) {
-    fetchDocuments();
+    fetchDocuments(1);
     fetchCollections();
   } else {
     router.push('/login');
@@ -223,6 +235,26 @@ onMounted(() => {
   background-color: #007bff;
   color: #fff;
 }
+
+
+.pagination-btn {
+  padding: 6px 12px;
+  margin: 0 4px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+
+
+
 
 .stats-btn {
   background-color: #ff9800;

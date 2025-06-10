@@ -74,8 +74,7 @@ EMAIL_HOST_USER=your-email
 EMAIL_HOST_PASSWORD=your-password
 
 REDIS_HOST=redis
-REDIS_PORT=6379
-CELERY_BROKER_URL=redis://redis:6379/0
+REDIS_PORT=redis_port
 ```
 
 3. Построить и запустить контейнеры:
@@ -91,7 +90,15 @@ v2.0
 - Добавлен фронтенд на Vue.js и интеграция через Nginx
 - Поддержка PostgreSQL + MongoDB
 - Reverse proxy через Nginx
-- Полноценный запуск через docker-compose up --build
+- Добавлена поддержка Celery и Redis для отправки email-кодов и хранения временных данных
+- Добавлен Rate Limit(throttle) и Пагинация для улучшения производительности
+- Обновлён Docker (docker-compose): добавлены сервисы Celery, Redis, Frontend (Vue.js) и Nginx
+- Добавлены новые API endpoints для реализации логики работы с:
+  - документами (documents)
+  - коллекциями (collections)
+  - пользователями (users)
+
+
 
 ### v1.3
 - удаление Ngnix из проекта

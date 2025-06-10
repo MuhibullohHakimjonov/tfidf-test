@@ -134,6 +134,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 		fields = ['id', 'name', 'size', 'word_count', 'created_at', 'mongo_id', 'collections']
 
 
+
 class CollectionSerializer(serializers.ModelSerializer):
 	documents = DocumentSerializer(many=True)
 
