@@ -79,20 +79,24 @@ const currentPage = ref(1);
 const nextPage = ref(null);
 const prevPage = ref(null);
 
-// Fetch documents with pagination
+
+const hasNextPage = computed(() => currentPage.value < totalPages.value);
+const hasPrevPage = computed(() => currentPage.value > 1);
+
 async function fetchDocuments(page = 1) {
+  if (!isAuthenticated.value) return;
+
   try {
-    const response = await axios.get(
-      `http://37.9.53.228/api/documents/?page=${page}`,
-      { withCredentials: true }
-    );
+    const response = await axios.get('/api/documents/', {
+      params: { page },
+      withCredentials: true
+    });
     documents.value = response.data.results;
-    nextPage.value = response.data.next;
-    prevPage.value = response.data.previous;
     currentPage.value = page;
+    totalPages.value = Math.ceil(response.data.count / 20); // Assuming PAGE_SIZE=20
   } catch (error) {
     console.error('Error fetching documents:', error);
-    documents.value = [];
+    showNotification('Ошибка загрузки документов', 'red');
   }
 }
 
