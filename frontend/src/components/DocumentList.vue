@@ -25,13 +25,13 @@
     <!-- Pagination -->
     <div v-if="documents.length" class="pagination mt-4 flex items-center">
       <button @click="fetchDocuments(currentPage - 1)"
-              :disabled="!prevPage"
+              :disabled="!hasPrevPage"
               class="btn pagination-btn">
         Предыдущая
       </button>
-      <span class="mx-4">Страница {{ currentPage }}</span>
+      <span class="mx-4">Страница {{ currentPage }} из {{ totalPages }}</span>
       <button @click="fetchDocuments(currentPage + 1)"
-              :disabled="!nextPage"
+              :disabled="!hasNextPage"
               class="btn pagination-btn">
         Следующая
       </button>
@@ -59,10 +59,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '../api';
-import { computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore();
@@ -76,13 +75,13 @@ const showModal = ref(false);
 const selectedDocumentId = ref(null);
 const selectedCollectionId = ref(null);
 const currentPage = ref(1);
-const nextPage = ref(null);
-const prevPage = ref(null);
+const totalPages = ref(1);
 
-
+// Computed for pagination
 const hasNextPage = computed(() => currentPage.value < totalPages.value);
 const hasPrevPage = computed(() => currentPage.value > 1);
 
+// Fetch documents with pagination
 async function fetchDocuments(page = 1) {
   if (!isAuthenticated.value) return;
 
@@ -91,21 +90,20 @@ async function fetchDocuments(page = 1) {
       params: { page },
       withCredentials: true
     });
-    documents.value = response.data.results;
+    const data = response.data;
+    documents.value = data.results;
     currentPage.value = page;
-    totalPages.value = Math.ceil(response.data.count / 20); // Assuming PAGE_SIZE=20
+    totalPages.value = Math.ceil(data.count / 20);
   } catch (error) {
     console.error('Error fetching documents:', error);
-    showNotification('Ошибка загрузки документов', 'red');
+    documents.value = [];
   }
 }
 
-// Fetch collections (for modal)
+// Fetch collections (for modal) - simple first page
 async function fetchCollections() {
   try {
-    const response = await axios.get(
-      `http://37.9.53.228/api/collections/?page=1`
-    );
+    const response = await axios.get('/api/collections/', { params: { page: 1 } });
     collections.value = response.data.results;
   } catch (error) {
     console.error('Error fetching collections:', error);
@@ -116,22 +114,15 @@ async function fetchCollections() {
 // Action handlers
 async function deleteDocument(docId) {
   try {
-    await axios.delete(
-      `http://37.9.53.228/api/documents/${docId}/delete/`
-    );
+    await axios.delete(`/api/documents/${docId}/delete/`, { withCredentials: true });
     fetchDocuments(currentPage.value);
-    showNotification('Документ удален успешно!', 'green');
   } catch (error) {
-    console.error('Ошибка удаления документа:', error);
-    showNotification('Не удалось удалить документ!', 'red');
+    console.error('Error deleting document:', error);
   }
 }
 
 function openAddToCollection(docId) {
-  if (!isAuthenticated.value) {
-    router.push('/login');
-    return;
-  }
+  if (!isAuthenticated.value) return router.push('/login');
   selectedDocumentId.value = docId;
   showModal.value = true;
 }
@@ -145,37 +136,21 @@ async function addToCollection() {
   if (!selectedCollectionId.value || !selectedDocumentId.value) return;
   try {
     await axios.post(
-      `http://37.9.53.228/api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`
+      `/api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`,
+      {},
+      { withCredentials: true }
     );
-    showNotification('Документ добавлен в коллекцию!', 'green');
     closeModal();
   } catch (error) {
-    console.error('Ошибка добавления документа:', error);
-    showNotification('Не удалось добавить документ в коллекцию!', 'red');
+    console.error('Error adding to collection:', error);
   }
-}
-
-// Notification helper
-function showNotification(message, color) {
-  const notification = document.createElement('div');
-  notification.innerText = message;
-  Object.assign(notification.style, {
-    position: 'fixed', top: '50px', right: '10px',
-    background: color, color: 'white', padding: '12px',
-    borderRadius: '6px', zIndex: '100'
-  });
-  document.body.appendChild(notification);
-  setTimeout(() => notification.remove(), 3000);
 }
 
 // On mount
 onMounted(() => {
-  if (isAuthenticated.value) {
-    fetchDocuments(1);
-    fetchCollections();
-  } else {
-    router.push('/login');
-  }
+  if (!isAuthenticated.value) return router.push('/login');
+  fetchDocuments(1);
+  fetchCollections();
 });
 </script>
 
