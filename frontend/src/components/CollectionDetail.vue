@@ -3,12 +3,12 @@
     <h2 v-if="loading" class="text-xl mb-4">Загрузка...</h2>
     <div v-else-if="error" class="text-red-500 text-center">{{ error }}</div>
     <div v-else>
-      <h2 class="text-xl mb-4">{{ collection.collections_id.name }}</h2>
+      <h2 class="text-xl mb-4">{{ collectionDetails.collections_id.name }}</h2>
 
       <!-- Documents in Collection -->
       <h3 class="text-lg mb-2">Документы в коллекции</h3>
       <table
-        v-if="collection.collections_id.documents && collection.collections_id.documents.length"
+        v-if="collectionDetails.collections_id.documents && collectionDetails.collections_id.documents.length"
         class="w-full border border-collapse text-sm mb-6"
       >
         <thead class="bg-gray-100">
@@ -18,7 +18,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="doc in collection.collections_id.documents" :key="doc.id">
+          <tr v-for="doc in collectionDetails.collections_id.documents" :key="doc.id">
             <td class="border p-2">
               <router-link
                 :to="`/documents/${doc.id}`"
@@ -28,10 +28,7 @@
               </router-link>
             </td>
             <td class="border p-2 flex justify-end">
-              <!-- Delete button with trash icon -->
-              <button @click="removeDocument(doc.id)" class="btn btn-danger">
-                🗑️
-              </button>
+              <button @click="removeDocument(doc.id)" class="btn btn-danger">🗑️</button>
             </td>
           </tr>
         </tbody>
@@ -40,13 +37,13 @@
         Нет документов в этой коллекции.
       </p>
 
-      <!-- Collection Statistics (unchanged) -->
+      <!-- Collection Statistics -->
       <h3 class="text-lg mb-2">Статистика коллекции</h3>
       <p class="text-sm text-gray-600 mb-4">
-        Количество документов: {{ collection.documents_count }}
+        Количество документов: {{ collectionStatistics.documents_count }}
       </p>
       <h4 class="text-md mb-2">Топ слова (по убыванию IDF)</h4>
-      <table class="w-full border border-collapse text-sm">
+      <table v-if="sortedTopWords.length" class="w-full border border-collapse text-sm">
         <thead class="bg-gray-100">
           <tr>
             <th class="border p-2 text-left">Слово</th>
@@ -62,6 +59,7 @@
           </tr>
         </tbody>
       </table>
+      <p v-else class="text-sm text-gray-600">Нет данных по статистике.</p>
     </div>
   </div>
 </template>
@@ -77,36 +75,35 @@ const router = useRouter();
 const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 
-const collection = ref({
-  documents_count: 0,
-  top_words: [],
+const collectionDetails = ref({
   collections_id: {
-    name: ''
+    name: '',
+    documents: []
   }
+});
+
+const collectionStatistics = ref({
+  documents_count: 0,
+  top_words: []
 });
 
 const loading = ref(true);
 const error = ref(null);
 
-const fetchCollection = async () => {
+const fetchCollectionDetails = async () => {
   try {
     const response = await axios.get(`api/collections/${route.params.id}/`);
-    collection.value = response.data;
+    collectionDetails.value = response.data;
   } catch (err) {
-    console.error('Не удалось загрузить коллекцию:', err);
-    error.value = 'Не удалось загрузить коллекцию.';
+    console.error('Не удалось загрузить детали коллекции:', err);
+    error.value = 'Не удалось загрузить детали коллекции.';
   }
 };
 
 const fetchCollectionStatistics = async () => {
   try {
     const response = await axios.get(`api/collections/${route.params.id}/statistics/`);
-    collection.value.documents_count = response.data.documents_count || 0;
-    collection.value.top_words = response.data.top_words || [];
-    if (!collection.value.collections_id.name) {
-      const collResponse = await axios.get(`api/collections/${route.params.id}/`);
-      collection.value.collections_id.name = collResponse.data.collections_id.name;
-    }
+    collectionStatistics.value = response.data;
   } catch (err) {
     console.error('Не удалось загрузить статистику коллекции:', err);
     error.value = 'Не удалось загрузить статистику коллекции.';
@@ -114,28 +111,24 @@ const fetchCollectionStatistics = async () => {
 };
 
 const sortedTopWords = computed(() => {
-  return [...collection.value.top_words].sort((a, b) => b.idf - a.idf);
+  return [...collectionStatistics.value.top_words].sort((a, b) => b.idf - a.idf);
 });
 
 const removeDocument = async (documentId) => {
   if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
   try {
     await axios.delete(`api/collection/${route.params.id}/${documentId}/delete/`);
-
-    // Обновляем и список документов, и статистику
-    await refreshCollectionData();
-
+    // remove from local state
+    collectionDetails.value.collections_id.documents = collectionDetails.value.collections_id.documents.filter(
+      doc => doc.id !== documentId
+    );
+    await fetchCollectionStatistics();
     showNotification('Документ удален из коллекции!', 'green');
   } catch (err) {
     console.error('Не удалось удалить документ:', err);
     showNotification('Не удалось удалить документ!', 'red');
   }
 };
-
-const refreshCollectionData = async () => {
-  await Promise.all([fetchCollection(), fetchCollectionStatistics()]);
-};
-
 
 const showNotification = (message, backgroundColor) => {
   const notification = document.createElement("div");
@@ -165,7 +158,7 @@ onMounted(async () => {
 
   loading.value = true;
   error.value = null;
-  await Promise.all([fetchCollection(), fetchCollectionStatistics()]);
+  await Promise.all([fetchCollectionDetails(), fetchCollectionStatistics()]);
   loading.value = false;
 });
 </script>
