@@ -3,15 +3,18 @@
     <h2 v-if="loading" class="text-xl mb-4">Загрузка...</h2>
     <div v-else-if="error" class="text-red-500 text-center">{{ error }}</div>
     <div v-else>
+      <!-- Only show if collectionDetails and collections_id exist -->
       <h2 class="text-xl mb-4" v-if="collectionDetails && collectionDetails.collections_id">
-          {{ collectionDetails.collections_id.name }}
-        </h2>
-
+        {{ collectionDetails.collections_id.name }}
+      </h2>
 
       <!-- Documents in Collection -->
-      <h3 class="text-lg mb-2">Документы в коллекции</h3>
+      <h3 class="text-lg mb-2" v-if="collectionDetails && collectionDetails.collections_id">Документы в коллекции</h3>
       <table
-        v-if="collectionDetails.collections_id.documents && collectionDetails.collections_id.documents.length"
+        v-if="collectionDetails &&
+              collectionDetails.collections_id &&
+              collectionDetails.collections_id.documents &&
+              collectionDetails.collections_id.documents.length"
         class="w-full border border-collapse text-sm mb-6"
       >
         <thead class="bg-gray-100">
@@ -23,10 +26,7 @@
         <tbody>
           <tr v-for="doc in collectionDetails.collections_id.documents" :key="doc.id">
             <td class="border p-2">
-              <router-link
-                :to="`/documents/${doc.id}`"
-                class="text-blue-500 hover:underline"
-              >
+              <router-link :to="`/documents/${doc.id}`" class="text-blue-500 hover:underline">
                 {{ doc.name }}
               </router-link>
             </td>
@@ -36,13 +36,11 @@
           </tr>
         </tbody>
       </table>
-      <p v-else class="text-sm text-gray-600 mb-6">
-        Нет документов в этой коллекции.
-      </p>
+      <p v-else class="text-sm text-gray-600 mb-6">Нет документов в этой коллекции.</p>
 
       <!-- Collection Statistics -->
       <h3 class="text-lg mb-2">Статистика коллекции</h3>
-      <p class="text-sm text-gray-600 mb-4">
+      <p class="text-sm text-gray-600 mb-4" v-if="collectionStatistics">
         Количество документов: {{ collectionStatistics.documents_count }}
       </p>
       <h4 class="text-md mb-2">Топ слова (по убыванию IDF)</h4>
@@ -66,6 +64,7 @@
     </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
