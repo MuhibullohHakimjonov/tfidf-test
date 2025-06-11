@@ -18,19 +18,25 @@ class TFIDFUploadSerializer(serializers.Serializer):
 	)
 
 	def validate_files(self, files):
+		"""
+		Validate each file:
+		  - Ensure none exceed the MAX_FILE_SIZE.
+		  - Ensure file content can be decoded as UTF-8.
+		  - Cache the file content in an attribute (_cached_content) to avoid re-reading.
+		"""
 		oversized = [f.name for f in files if f.size > MAX_FILE_SIZE]
 		if oversized:
 			raise serializers.ValidationError(f"Files too large: {', '.join(oversized)}")
 
 		for f in files:
-			# Read only once
-			content = f.read()
+			content = f.read()  # read file content once
 			try:
 				content.decode('utf-8')
 			except UnicodeDecodeError:
 				raise serializers.ValidationError("Only UTF-8 encoded text files are allowed.")
-			f.seek(0)  # Reset file pointer
-
+			# Cache file content on the file object so we don't need to re-read it
+			f._cached_content = content
+			f.seek(0)  # reset file pointer
 		return files
 
 	def create(self, validated_data):
@@ -38,11 +44,11 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		files = validated_data['files']
 		texts = []
 
-		# Read files only once
+		# Use cached content from validate_files()
 		for f in files:
-			content = f.read().decode('utf-8').strip()
+			content = f._cached_content.decode('utf-8').strip()
 			texts.append(content)
-			f.seek(0)  # Reset for getting file size later if needed
+			f.seek(0)  # reset pointer if needed later
 
 		tfidf_results, word_counts = compute_global_tfidf_table(texts)
 		documents_collection = get_documents_collection()
@@ -62,7 +68,7 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		result = documents_collection.insert_many(documents)
 		inserted_ids = result.inserted_ids
 
-		# Write meta to PostgreSQL
+		# Write file meta to PostgreSQL
 		for f, wc, mongo_id in zip(files, word_counts, inserted_ids):
 			Document.objects.create(
 				user=user,
@@ -72,21 +78,23 @@ class TFIDFUploadSerializer(serializers.Serializer):
 				mongo_id=str(mongo_id)
 			)
 
-		# Compute average TF and global top words across all docs (not just tfidf_results[0])
-		tf_idf_map = defaultdict(lambda: {'idf': 0, 'tf_list': []})
+		# Compute average TF and gather top words across all documents
+		# Use cumulative sum and count for efficiency
+		tf_idf_map = defaultdict(lambda: {'idf': 0, 'tf_sum': 0, 'count': 0})
 		for doc_result in tfidf_results:
 			for word_info in doc_result:
 				word = word_info["word"]
 				tf_idf_map[word]['idf'] = word_info["idf"]
-				tf_idf_map[word]['tf_list'].append(word_info["tf"])
+				tf_idf_map[word]['tf_sum'] += word_info["tf"]
+				tf_idf_map[word]['count'] += 1
 
-		# Take only real top 50 words
+		# Compute top words sorted by idf descending
 		sorted_words = sorted(tf_idf_map.items(), key=lambda x: x[1]['idf'], reverse=True)[:50]
 		top_words = [
 			{
 				"word": word,
 				"idf": round(info['idf'], 6),
-				"tf": round(sum(info['tf_list']) / len(info['tf_list']), 6)
+				"tf": round(info['tf_sum'] / info['count'], 6)
 			}
 			for word, info in sorted_words
 		]
