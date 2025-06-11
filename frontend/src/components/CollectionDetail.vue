@@ -3,40 +3,39 @@
     <h2 v-if="loading" class="text-xl mb-4">Загрузка...</h2>
     <div v-else-if="error" class="text-red-500 text-center">{{ error }}</div>
     <div v-else>
-      <!-- Display collection name from response (inside documents_id) -->
-      <h2 class="text-xl mb-4">{{ collection.documents_id.name }}</h2>
-      
-      <!-- Documents in Collection -->
-      <h3 class="text-lg mb-2">Документы в коллекции</h3>
-      <table
-        v-if="collection.documents_id.documents && collection.documents_id.documents.length"
-        class="w-full border border-collapse text-sm mb-6"
-      >
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border p-2 text-left">Название документа</th>
-            <th class="border p-2 text-left">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="doc in collection.documents_id.documents" :key="doc.id">
-            <td class="border p-2">
-              <router-link
-                :to="`/documents/${doc.id}`"
-                class="text-blue-500 hover:underline"
-              >
-                {{ doc.name }}
-              </router-link>
-            </td>
-            <td class="border p-2 flex justify-end">
-              <!-- Delete button with trash icon -->
-              <button @click="removeDocument(doc.id)" class="btn btn-danger">
-                🗑️
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <h2 class="text-xl mb-4">{{ collection.name }}</h2>
+
+        <!-- Documents in Collection -->
+        <h3 class="text-lg mb-2">Документы в коллекции</h3>
+        <table
+          v-if="collection.documents && collection.documents.length"
+          class="w-full border border-collapse text-sm mb-6"
+        >
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border p-2 text-left">Название документа</th>
+              <th class="border p-2 text-left">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="doc in collection.documents" :key="doc.id">
+              <td class="border p-2">
+                <router-link
+                  :to="`/documents/${doc.id}`"
+                  class="text-blue-500 hover:underline"
+                >
+                  {{ doc.name }}
+                </router-link>
+              </td>
+              <td class="border p-2 flex justify-end">
+                <button @click="removeDocument(doc.id)" class="btn btn-danger">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
       <p v-else class="text-sm text-gray-600 mb-6">
         Нет документов в этой коллекции.
       </p>
@@ -92,27 +91,28 @@ const error = ref(null);
 const fetchCollection = async () => {
   try {
     const response = await axios.get(`collections/${route.params.id}/`);
-    collection.value = response.data;
+    collection.value = {
+      ...collection.value,
+      ...response.data
+    }; // merge in new values but keep docs_count/top_words if already set
   } catch (err) {
     console.error('Не удалось загрузить коллекцию:', err);
     error.value = 'Не удалось загрузить коллекцию.';
   }
 };
 
+
 const fetchCollectionStatistics = async () => {
   try {
     const response = await axios.get(`collections/${route.params.id}/statistics/`);
     collection.value.documents_count = response.data.documents_count || 0;
     collection.value.top_words = response.data.top_words || [];
-    if (!collection.value.documents_id.name) {
-      const collResponse = await axios.get(`collections/${route.params.id}/`);
-      collection.value.documents_id.name = collResponse.data.documents_id.name;
-    }
   } catch (err) {
     console.error('Не удалось загрузить статистику коллекции:', err);
     error.value = 'Не удалось загрузить статистику коллекции.';
   }
 };
+
 
 const sortedTopWords = computed(() => {
   return [...collection.value.top_words].sort((a, b) => b.idf - a.idf);
@@ -122,7 +122,7 @@ const removeDocument = async (documentId) => {
   if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
   try {
     await axios.delete(`collection/${route.params.id}/${documentId}/delete/`);
-    collection.value.documents_id.documents = collection.value.documents_id.documents.filter(
+    collection.value.documents = collection.value.documents.filter(
       doc => doc.id !== documentId
     );
     await fetchCollectionStatistics();
