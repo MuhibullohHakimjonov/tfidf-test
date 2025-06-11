@@ -7,8 +7,6 @@ from .models import Document, Collection
 from .mongo import get_documents_collection
 from .utils import compute_global_tfidf_table
 
-MAX_FILE_SIZE = 6 * 1024 * 1024
-
 
 class TFIDFUploadSerializer(serializers.Serializer):
 	files = serializers.ListField(
@@ -24,31 +22,24 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		  - Ensure file content can be decoded as UTF-8.
 		  - Cache the file content in an attribute (_cached_content) to avoid re-reading.
 		"""
-		oversized = [f.name for f in files if f.size > MAX_FILE_SIZE]
-		if oversized:
-			raise serializers.ValidationError(f"Files too large: {', '.join(oversized)}")
-
 		for f in files:
 			content = f.read()  # read file content once
 			try:
 				content.decode('utf-8')
 			except UnicodeDecodeError:
 				raise serializers.ValidationError("Only UTF-8 encoded text files are allowed.")
-			# Cache file content on the file object so we don't need to re-read it
 			f._cached_content = content
-			f.seek(0)  # reset file pointer
+			f.seek(0)
 		return files
 
 	def create(self, validated_data):
 		user = self.context['request'].user
 		files = validated_data['files']
 		texts = []
-
-		# Use cached content from validate_files()
 		for f in files:
 			content = f._cached_content.decode('utf-8').strip()
 			texts.append(content)
-			f.seek(0)  # reset pointer if needed later
+			f.seek(0)
 
 		tfidf_results, word_counts = compute_global_tfidf_table(texts)
 		documents_collection = get_documents_collection()
@@ -67,8 +58,6 @@ class TFIDFUploadSerializer(serializers.Serializer):
 
 		result = documents_collection.insert_many(documents)
 		inserted_ids = result.inserted_ids
-
-		# Write file meta to PostgreSQL
 		for f, wc, mongo_id in zip(files, word_counts, inserted_ids):
 			Document.objects.create(
 				user=user,
