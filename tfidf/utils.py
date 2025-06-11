@@ -11,17 +11,14 @@ def tokenize(text):
 
 def compute_global_tfidf_table(documents):
 	N = len(documents)
-	df = defaultdict(int)
-	tokenized_docs = []
-	for doc in documents:
-		tokens = tokenize(doc)
-		tokenized_docs.append(tokens)
-		for word in set(tokens):
-			df[word] += 1
-
-	global_idf = {word: math.log(N / count) for word, count in df.items()}
+	tokenized_docs = [tokenize(doc) for doc in documents]
+	df = Counter()
+	for tokens in tokenized_docs:
+		df.update(set(tokens))
+	global_idf = {word: math.log(N / df[word]) for word in df}
 	top_50_words = sorted(global_idf.items(), key=lambda x: x[1], reverse=True)[:50]
-	top_words = [word for word, _ in top_50_words]
+	top_words_set = set(word for word, _ in top_50_words)
+
 	results = []
 	word_counts = []
 	for tokens in tokenized_docs:
@@ -29,9 +26,9 @@ def compute_global_tfidf_table(documents):
 		word_counts.append(total_words)
 
 		tf_counter = Counter(tokens)
-		doc_result = []
 
-		for word in top_words:
+		doc_result = []
+		for word in top_words_set:
 			tf = tf_counter[word] / total_words if total_words else 0
 			doc_result.append({
 				"word": word,
