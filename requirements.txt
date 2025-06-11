@@ -18,7 +18,6 @@ djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
 dnspython==2.7.0
 drf-spectacular==0.28.0
-gensim==4.3.3
 gunicorn==23.0.0
 idna==3.10
 inflection==0.5.1
