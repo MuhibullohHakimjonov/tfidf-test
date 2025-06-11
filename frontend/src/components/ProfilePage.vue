@@ -82,7 +82,7 @@ const notificationType = ref('bg-green-500');
 
 const fetchUserDetails = async () => {
   try {
-    const response = await axios.get('api/user/user/me/');
+    const response = await axios.get('user/user/me/');
     user.value = response.data;
     form.value.username = response.data.username;
     form.value.email = response.data.email;
@@ -94,7 +94,7 @@ const fetchUserDetails = async () => {
 
 const updateProfile = async () => {
   try {
-    const response = await axios.put('api/user/user/me/', form.value);
+    const response = await axios.put('user/user/me/', form.value);
     user.value = response.data;
     triggerNotification('Изменения успешно сохранены.', 'bg-green-500');
   } catch (err) {
@@ -109,7 +109,7 @@ const changePassword = async () => {
     return;
   }
   try {
-    await axios.put('api/user/user/change-password/', {
+    await axios.put('user/user/change-password/', {
       old_password: passwordForm.value.oldPassword,
       new_password: passwordForm.value.newPassword,
     });
@@ -133,7 +133,7 @@ const changePassword = async () => {
 
 const confirmDeleteAccount = async () => {
   try {
-    await axios.delete('api/user/user/me/');
+    await axios.delete('user/user/me/');
     triggerNotification('Аккаунт удален', 'bg-green-500');
     authStore.clearToken();
     router.push('/login');

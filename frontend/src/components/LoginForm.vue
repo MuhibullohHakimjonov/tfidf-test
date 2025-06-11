@@ -59,7 +59,7 @@ const notificationMessage = ref('');
 const login = async () => {
   showNotification.value = false; // Reset notification
   try {
-    const response = await axios.post('http://localhost:8000/api/user/login/', {
+    const response = await axios.post('user/login/', {
       email: email.value,
       password: password.value,
     });
