@@ -5,10 +5,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev cargo
+
+RUN apk add --no-cache \
+    gcc \
+    g++ \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    cargo \
+    lapack-dev \
+    openblas-dev \
+    gfortran \
+    python3-dev
 
 COPY requirements.txt .
-RUN pip install --prefix=/install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
+
 
 
 FROM python:3.12-alpine
