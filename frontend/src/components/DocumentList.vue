@@ -1,7 +1,6 @@
 <template>
   <div class="p-4">
     <h2 class="text-xl mb-4">Список документов</h2>
-
     <table v-if="documents.length" class="documents-table">
       <thead>
         <tr>
@@ -21,22 +20,6 @@
         </tr>
       </tbody>
     </table>
-
-    <!-- Pagination -->
-    <div v-if="documents.length" class="pagination mt-4 flex items-center">
-      <button @click="fetchDocuments(currentPage - 1)"
-              :disabled="!hasPrevPage"
-              class="btn pagination-btn">
-        Предыдущая
-      </button>
-      <span class="mx-4">Страница {{ currentPage }} из {{ totalPages }}</span>
-      <button @click="fetchDocuments(currentPage + 1)"
-              :disabled="!hasNextPage"
-              class="btn pagination-btn">
-        Следующая
-      </button>
-    </div>
-
     <p v-else class="no-docs-text">Нет загруженных документов.</p>
 
     <!-- Modal for selecting collection -->
@@ -59,99 +42,111 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '../api';
+import { computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated);
-const router = useRouter();
 
-// State
+
+const router = useRouter();
 const documents = ref([]);
 const collections = ref([]);
 const showModal = ref(false);
 const selectedDocumentId = ref(null);
 const selectedCollectionId = ref(null);
-const currentPage = ref(1);
-const totalPages = ref(1);
 
-// Computed for pagination
-const hasNextPage = computed(() => currentPage.value < totalPages.value);
-const hasPrevPage = computed(() => currentPage.value > 1);
-
-// Fetch documents with pagination
-async function fetchDocuments(page = 1) {
-  if (!isAuthenticated.value) return;
-
+const fetchDocuments = async () => {
   try {
-    // Используем шаблонную строку для подстановки page
-    const response = await axios.get(`api/documents/?page=${page}`, {
-      withCredentials: true
+    const response = await axios.get('api/documents/', {
+      withCredentials: true,
     });
-    const data = response.data;
-    documents.value = data.results;
-    currentPage.value = page;
-    totalPages.value = Math.ceil(data.count / 20);
+    documents.value = response.data;
   } catch (error) {
     console.error('Error fetching documents:', error);
     documents.value = [];
   }
-}
+};
 
-// Fetch collections (for modal) - simple first page
-async function fetchCollections() {
+const deleteDocument = async (docId) => {
   try {
-    const response = await axios.get(`api/collections/?page=1`, {
-      withCredentials: true
-    });
-    collections.value = response.data.results;
+    await axios.delete(`api/documents/${docId}/delete/`);
+    documents.value = documents.value.filter(doc => doc.id !== docId);
+    showNotification("Документ удален успешно!", "green");
+  } catch (error) {
+    console.error("Ошибка удаления документа:", error);
+    showNotification("Не удалось удалить документ!", "red");
+  }
+};
+
+
+const fetchCollections = async () => {
+  try {
+    const response = await axios.get('api/collections/');
+    collections.value = response.data;
   } catch (error) {
     console.error('Error fetching collections:', error);
     collections.value = [];
   }
-}
+};
 
-// Action handlers
-async function deleteDocument(docId) {
-  try {
-    await axios.delete(`api/documents/${docId}/delete/`, { withCredentials: true });
-    fetchDocuments(currentPage.value);
-  } catch (error) {
-    console.error('Error deleting document:', error);
+const openAddToCollection = (docId) => {
+  if (!isAuthenticated.value) {
+    router.push('/login');
+    return;
   }
-}
-
-function openAddToCollection(docId) {
-  if (!isAuthenticated.value) return router.push('/login');
   selectedDocumentId.value = docId;
   showModal.value = true;
-}
+};
 
-function closeModal() {
+const closeModal = () => {
   showModal.value = false;
   selectedCollectionId.value = null;
-}
+};
 
-async function addToCollection() {
+
+const showNotification = (message, color) => {
+  const notification = document.createElement("div");
+  notification.innerText = message;
+  notification.style.position = "fixed";
+  notification.style.top = "50px";
+  notification.style.right = "10px";
+  notification.style.background = color;
+  notification.style.color = "white";
+  notification.style.padding = "20px";
+  notification.style.borderRadius = "6px";
+  notification.style.zIndex = "100";
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+};
+
+const addToCollection = async () => {
   if (!selectedCollectionId.value || !selectedDocumentId.value) return;
   try {
-    await axios.post(
-      `api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`,
-      {}, { withCredentials: true }
-    );
+    await axios.post(`api/collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`);
+    showNotification("Документ добавлен в коллекцию!", "green");
     closeModal();
   } catch (error) {
-    console.error('Error adding to collection:', error);
+    console.error("Ошибка добавления документа:", error);
+    showNotification("Не удалось добавить документ в коллекцию!", "red");
   }
-}
+};
 
-// On mount
+
 onMounted(() => {
-  if (!isAuthenticated.value) return router.push('/login');
-  fetchDocuments(1);
-  fetchCollections();
+  if (isAuthenticated.value) {
+    fetchDocuments();
+    fetchCollections();
+  } else {
+    router.push('/login');
+  }
 });
 </script>
 
@@ -228,26 +223,6 @@ onMounted(() => {
   background-color: #007bff;
   color: #fff;
 }
-
-
-.pagination-btn {
-  padding: 6px 12px;
-  margin: 0 4px;
-  background-color: #4a90e2;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.pagination-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-
-
-
 
 .stats-btn {
   background-color: #ff9800;

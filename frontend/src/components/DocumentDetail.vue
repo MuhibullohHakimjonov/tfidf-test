@@ -21,16 +21,13 @@ onMounted(async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get(`documents/${route.params.id}/`);
-    console.log(import.meta.env.VITE_API_URL);
+    const response = await axios.get(`api/documents/${route.params.id}/`);
     content.value = response.data.content; // Access the content field
   } catch (err) {
     error.value = 'Не удалось загрузить содержимое документа.';
     console.error(err);
-    console.log(import.meta.env.VITE_API_URL);
   } finally {
     loading.value = false;
-    console.log(import.meta.env.VITE_API_URL);
   }
 });
 </script>

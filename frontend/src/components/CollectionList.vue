@@ -40,12 +40,6 @@
         </tr>
       </tbody>
     </table>
-    <div v-if="collections.length" class="pagination mt-4">
-      <button @click="fetchCollections(currentPage - 1)" :disabled="!prevPage" class="btn pagination-btn">Предыдущая</button>
-      <span class="mx-2">Страница {{ currentPage }}</span>
-      <button @click="fetchCollections(currentPage + 1)" :disabled="!nextPage" class="btn pagination-btn">Следующая</button>
-    </div>
-
     <p v-else class="no-data">
       Нет коллекций.
     </p>
@@ -66,24 +60,17 @@ const isAuthenticated = computed(() => authStore.isAuthenticated);
 const router = useRouter();
 const newCollectionName = ref('');
 const collections = ref([]);
-const currentPage = ref(1);
-const nextPage = ref(null);
-const prevPage = ref(null);
 
-const fetchCollections = async (page = 1) => {
+const fetchCollections = async () => {
   try {
-    const response = await axios.get(`api/collections/?page=${page}`);
-    collections.value = response.data.results;
-    nextPage.value = response.data.next;
-    prevPage.value = response.data.previous;
-    currentPage.value = page;
+    const response = await axios.get('api/collections/');
+    collections.value = response.data;
     console.log('Fetched collections:', collections.value);
   } catch (error) {
     console.error('Failed to fetch collections:', error);
     collections.value = [];
   }
 };
-
 const deleteCollection = async (collectionId) => {
   try {
     await axios.delete(`api/collection/${collectionId}/delete/`);
@@ -132,7 +119,7 @@ const createCollection = async () => {
 
 onMounted(() => {
   if (isAuthenticated.value) {
-    fetchCollections(1);
+    fetchCollections();
   } else {
     console.warn('User not authenticated, redirecting to login.');
     router.push('/login');
@@ -287,21 +274,7 @@ onMounted(() => {
   .collections-table {
     font-size: 0.75rem;
   }
-  .pagination-btn {
-  padding: 6px 12px;
-  margin: 0 4px;
-  background-color: #4a90e2;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.pagination-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
+  
   .collections-table th,
   .collections-table td {
     padding: 0.5rem;
