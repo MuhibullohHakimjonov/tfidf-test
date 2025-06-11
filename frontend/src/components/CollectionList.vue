@@ -64,7 +64,7 @@ const collections = ref([]);
 const fetchCollections = async () => {
   try {
     const response = await axios.get('collections/');
-    collections.value = response.data;
+    collections.value = response.data.results;
     console.log('Fetched collections:', collections.value);
   } catch (error) {
     console.error('Failed to fetch collections:', error);

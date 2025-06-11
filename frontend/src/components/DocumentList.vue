@@ -64,7 +64,7 @@ const fetchDocuments = async () => {
     const response = await axios.get('documents/', {
       withCredentials: true,
     });
-    documents.value = response.data;
+    documents.value = response.data.results;
   } catch (error) {
     console.error('Error fetching documents:', error);
     documents.value = [];
@@ -86,7 +86,7 @@ const deleteDocument = async (docId) => {
 const fetchCollections = async () => {
   try {
     const response = await axios.get('collections/');
-    collections.value = response.data;
+    collections.value = response.data.results;
   } catch (error) {
     console.error('Error fetching collections:', error);
     collections.value = [];
