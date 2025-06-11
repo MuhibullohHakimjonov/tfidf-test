@@ -1,39 +1,39 @@
-FROM python:3.12-alpine AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-
-RUN apk add --no-cache \
-    gcc \
-    g++ \
-    musl-dev \
-    libffi-dev \
-    openssl-dev \
-    cargo \
-    lapack-dev \
-    openblas-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libopenblas-dev \
+    liblapack-dev \
     gfortran \
-    python3-dev
+    libffi-dev \
+    libssl-dev \
+    cargo \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
 
 
-
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libopenblas0 \
+    liblapack3 \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apk add --no-cache libffi openssl
-
-COPY --from=builder /install /usr/local
+COPY --from=builder /install /usr/local/
 COPY . .
 
 EXPOSE 8000
