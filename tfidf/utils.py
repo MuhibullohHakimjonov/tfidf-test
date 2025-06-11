@@ -1,4 +1,6 @@
+import math
 import re
+from collections import Counter, defaultdict
 
 token_pattern = re.compile(r'\b\w+\b')
 
@@ -7,9 +9,36 @@ def tokenize(text):
 	return token_pattern.findall(text.lower())
 
 
-def process_file_content(file_content):
-	return tokenize(file_content.decode('utf-8', errors='ignore').strip())
+def compute_global_tfidf_table(documents):
+	N = len(documents)
+	df = defaultdict(int)
+	tokenized_docs = []
+	for doc in documents:
+		tokens = tokenize(doc)
+		tokenized_docs.append(tokens)
+		for word in set(tokens):
+			df[word] += 1
 
+	global_idf = {word: math.log(N / count) for word, count in df.items()}
+	top_50_words = sorted(global_idf.items(), key=lambda x: x[1], reverse=True)[:50]
+	top_words = [word for word, _ in top_50_words]
+	results = []
+	word_counts = []
+	for tokens in tokenized_docs:
+		total_words = len(tokens)
+		word_counts.append(total_words)
 
-def process_text(text):
-	return tokenize(text)
+		tf_counter = Counter(tokens)
+		doc_result = []
+
+		for word in top_words:
+			tf = tf_counter[word] / total_words if total_words else 0
+			doc_result.append({
+				"word": word,
+				"tf": round(tf, 6),
+				"idf": round(global_idf[word], 6)
+			})
+
+		results.append(doc_result)
+
+	return results, word_counts
