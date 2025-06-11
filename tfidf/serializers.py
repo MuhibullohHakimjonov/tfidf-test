@@ -1,11 +1,16 @@
-from collections import defaultdict
+import math
+from collections import defaultdict, Counter
 from datetime import datetime
+from multiprocessing import Pool, cpu_count
 
 from bson import ObjectId
 from rest_framework import serializers
 from .models import Document, Collection
 from .mongo import get_documents_collection
-from .utils import compute_global_tfidf_table
+from .utils import process_file_content, process_text
+
+from gensim.corpora import Dictionary
+from gensim.models import TfidfModel
 
 
 class TFIDFUploadSerializer(serializers.Serializer):
@@ -16,48 +21,75 @@ class TFIDFUploadSerializer(serializers.Serializer):
 	)
 
 	def validate_files(self, files):
-		"""
-		Validate each file:
-		  - Ensure none exceed the MAX_FILE_SIZE.
-		  - Ensure file content can be decoded as UTF-8.
-		  - Cache the file content in an attribute (_cached_content) to avoid re-reading.
-		"""
+		# Ограничение отключено — nginx проверяет размер
 		for f in files:
-			content = f.read()  # read file content once
 			try:
-				content.decode('utf-8')
+				f.read().decode('utf-8').strip()
+				f.seek(0)
 			except UnicodeDecodeError:
 				raise serializers.ValidationError("Only UTF-8 encoded text files are allowed.")
-			f._cached_content = content
-			f.seek(0)
 		return files
 
 	def create(self, validated_data):
 		user = self.context['request'].user
 		files = validated_data['files']
-		texts = []
-		for f in files:
-			content = f._cached_content.decode('utf-8').strip()
-			texts.append(content)
-			f.seek(0)
 
-		tfidf_results, word_counts = compute_global_tfidf_table(texts)
+		raw_texts = [f.read() for f in files]
+
+		# multiprocessing токенизация
+		with Pool(processes=min(cpu_count(), len(raw_texts))) as pool:
+			tokenized_docs = pool.map(process_file_content, raw_texts)
+
+		dictionary = Dictionary(tokenized_docs)
+		corpus = [dictionary.doc2bow(text) for text in tokenized_docs]
+		tfidf_model = TfidfModel(corpus)
+		tfidf_corpus = tfidf_model[corpus]
+
+		idfs = {}
+		N = len(corpus)
+		for word_id, freq in dictionary.dfs.items():
+			idfs[dictionary[word_id]] = math.log(N / freq)
+
+		# top 50 по IDF
+		top_words = sorted(idfs.items(), key=lambda x: x[1], reverse=True)[:50]
+		top_words_list = [word for word, _ in top_words]
+
+		tfidf_results = []
+		word_counts = []
+
+		for doc_tokens, doc_tfidf in zip(tokenized_docs, tfidf_corpus):
+			word_count = len(doc_tokens)
+			word_counts.append(word_count)
+
+			tf_counter = Counter(doc_tokens)
+			doc_result = []
+			for word in top_words_list:
+				tf = tf_counter[word] / word_count if word_count else 0
+				idf = idfs.get(word, 0)
+				doc_result.append({
+					"word": word,
+					"tf": round(tf, 6),
+					"idf": round(idf, 6)
+				})
+			tfidf_results.append(doc_result)
+
 		documents_collection = get_documents_collection()
 		now = datetime.utcnow().isoformat()
-
 		documents = []
-		for f, text, tfidf, wc in zip(files, texts, tfidf_results, word_counts):
+
+		for f, tokens, tfidf, wc in zip(files, tokenized_docs, tfidf_results, word_counts):
 			documents.append({
 				"file_name": f.name,
 				"file_size": f.size,
 				"word_count": wc,
-				"content": text,
+				"content": ' '.join(tokens),
 				"tfidf_data": tfidf,
 				"uploaded_at": now
 			})
 
 		result = documents_collection.insert_many(documents)
 		inserted_ids = result.inserted_ids
+
 		for f, wc, mongo_id in zip(files, word_counts, inserted_ids):
 			Document.objects.create(
 				user=user,
@@ -67,26 +99,18 @@ class TFIDFUploadSerializer(serializers.Serializer):
 				mongo_id=str(mongo_id)
 			)
 
-		# Compute average TF and gather top words across all documents
-		# Use cumulative sum and count for efficiency
-		tf_idf_map = defaultdict(lambda: {'idf': 0, 'tf_sum': 0, 'count': 0})
-		for doc_result in tfidf_results:
-			for word_info in doc_result:
-				word = word_info["word"]
-				tf_idf_map[word]['idf'] = word_info["idf"]
-				tf_idf_map[word]['tf_sum'] += word_info["tf"]
-				tf_idf_map[word]['count'] += 1
-
-		# Compute top words sorted by idf descending
-		sorted_words = sorted(tf_idf_map.items(), key=lambda x: x[1]['idf'], reverse=True)[:50]
-		top_words = [
-			{
-				"word": word,
-				"idf": round(info['idf'], 6),
-				"tf": round(info['tf_sum'] / info['count'], 6)
-			}
-			for word, info in sorted_words
-		]
+		# возвращаем top_words с усреднённым tf
+		top_words_return = []
+		if tfidf_results:
+			for i, item in enumerate(tfidf_results[0][:50]):
+				word = item["word"]
+				idf = item["idf"]
+				avg_tf = sum(doc[i]["tf"] for doc in tfidf_results if i < len(doc)) / len(tfidf_results)
+				top_words_return.append({
+					"word": word,
+					"idf": round(idf, 6),
+					"tf": round(avg_tf, 6)
+				})
 
 		return {
 			"files": [
@@ -98,7 +122,7 @@ class TFIDFUploadSerializer(serializers.Serializer):
 				}
 				for f, wc, fid in zip(files, word_counts, inserted_ids)
 			],
-			"top_words": top_words
+			"top_words": top_words_return
 		}
 
 
@@ -172,7 +196,7 @@ class CollectionStatisticsSerializer(serializers.Serializer):
 	top_words = WordStatsSerializer(many=True)
 
 	@classmethod
-	def from_collection(cls, collection: Collection):
+	def from_collection(cls, collection):
 		mongo_ids = [doc.mongo_id for doc in collection.documents.all()]
 		documents = list(get_documents_collection().find({
 			"_id": {"$in": [ObjectId(mongo_id) for mongo_id in mongo_ids]}
@@ -182,29 +206,45 @@ class CollectionStatisticsSerializer(serializers.Serializer):
 			raise serializers.ValidationError("No documents found in MongoDB")
 
 		texts = [doc.get("content", "") for doc in documents]
-		tfidf_results, _ = compute_global_tfidf_table(texts)
 
-		tf_aggregated = {}
-		for doc in tfidf_results:
-			for entry in doc:
-				word = entry["word"]
-				tf_aggregated[word] = tf_aggregated.get(word, 0) + entry["tf"]
+		# multiprocessing токенизация
+		with Pool(processes=min(cpu_count(), len(texts))) as pool:
+			tokenized_docs = pool.map(process_text, texts)
 
-		idf_lookup = {entry["word"]: entry["idf"] for entry in tfidf_results[0]}
+		dictionary = Dictionary(tokenized_docs)
+		corpus = [dictionary.doc2bow(text) for text in tokenized_docs]
+		tfidf_model = TfidfModel(corpus)
+		tfidf_corpus = tfidf_model[corpus]
 
-		tfidf_combined = [
-			{
+		idfs = {}
+		N = len(corpus)
+		for word_id, freq in dictionary.dfs.items():
+			idfs[dictionary[word_id]] = math.log(N / freq)
+
+		tf_aggregated = Counter()
+		for doc_tokens in tokenized_docs:
+			tf_counter = Counter(doc_tokens)
+			total_words = len(doc_tokens)
+			for word, count in tf_counter.items():
+				tf = count / total_words if total_words else 0
+				tf_aggregated[word] += tf
+
+		# взять top 50 по IDF
+		top_words = sorted(idfs.items(), key=lambda x: x[1], reverse=True)[:50]
+		top_words_list = [word for word, _ in top_words]
+
+		top_words_stats = []
+		for word in top_words_list:
+			idf = idfs.get(word, 0)
+			total_tf = tf_aggregated.get(word, 0)
+			top_words_stats.append({
 				"word": word,
-				"total_tf": round(tf, 6),
-				"idf": round(idf_lookup[word], 6)
-			}
-			for word, tf in tf_aggregated.items()
-		]
-
-		tfidf_sorted = sorted(tfidf_combined, key=lambda x: x["idf"], reverse=True)[:50]
+				"total_tf": round(total_tf, 6),
+				"idf": round(idf, 6)
+			})
 
 		return cls({
 			"collection_id": collection.id,
 			"documents_count": len(documents),
-			"top_words": tfidf_sorted
+			"top_words": top_words_stats
 		})
