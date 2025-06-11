@@ -21,7 +21,6 @@
 ├── user/               # Пользовательское приложение
 ├── frontend/           # Vue.js клиентская часть
 ├── static/             # Статика Django (collectstatic)
-├── media/              # Медиа-файлы пользователей
 ├── entrypoint.sh       # Скрипт запуска миграций и collectstatic
 ├── Dockerfile          # Docker-образ для backend
 ├── docker-compose.yml  # Docker Compose конфигурация
@@ -77,9 +76,20 @@ REDIS_HOST=redis
 REDIS_PORT=redis_port
 ```
 
-3. Построить и запустить контейнеры:
+3. В nginx/default.conf: Замените 37.9.53.228 на ip вашего vm
+
+
+4. Создать .env файл внутри 'frontend/' и указать параметр
+Пример .env файла:
+```text
+VITE_API_URL=http://ip вашего vm/api/
+```
+
+
+
+5. Построить и запустить контейнеры:
 ```bash
-  docker-compose up --build -d
+  docker compose up --build -d
 ```
 
 
