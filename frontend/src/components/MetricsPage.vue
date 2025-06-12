@@ -2,7 +2,7 @@
   <div class="p-4">
     <h2 class="text-xl font-bold mb-4">Метрики</h2>
 
-    <div v-if="metrics">
+    <div v-if="metrics && isValidMetrics">
       <table class="vertical-table">
         <tbody>
           <tr v-for="(metric, index) in processedMetrics" :key="index">
@@ -27,7 +27,9 @@ const metrics = ref(null);
 const loading = ref(false);
 const error = ref('');
 
-// Определяем два возможных набора метрик:
+const authStore = useAuthStore();
+
+// Define two possible sets of labels for admin and user metrics
 const adminMetricLabels = {
   files_processed: "Обработано файлов",
   min_time_processed: "Минимальное время обработки (сек)",
@@ -46,24 +48,29 @@ const userMetricLabels = {
   max_word_count: "Максимальное количество слов"
 };
 
-// Вычисляемый список метрик для отображения
+// Helper flag: check if received `metrics.value` is a valid object
+const isValidMetrics = computed(() => {
+  return metrics.value && typeof metrics.value === "object";
+});
+
+// Compute processed metrics using user-friendly labels.
+// If the metrics are admin metrics, the object will contain "min_time_processed".
 const processedMetrics = computed(() => {
-  if (!metrics.value) return [];
+  // Guard clause if data is not valid
+  if (!isValidMetrics.value) return [];
 
-  // Автоматическое определение типа метрик
   const isAdmin = 'min_time_processed' in metrics.value;
-
   const labels = isAdmin ? adminMetricLabels : userMetricLabels;
 
   return Object.entries(labels).map(([key, label]) => {
     let value = metrics.value[key];
 
-    // форматировать дату для админа
+    // For admin metrics, format timestamp to a readable string
     if (key === 'latest_file_processed_timestamp' && value) {
       value = new Date(value * 1000).toLocaleString();
     }
 
-    // если метрика отсутствует
+    // If the metric is missing, display an em dash
     if (value === undefined || value === null) {
       value = '—';
     }
@@ -72,25 +79,25 @@ const processedMetrics = computed(() => {
   });
 });
 
-const authStore = useAuthStore();
-
 onMounted(async () => {
   loading.value = true;
   try {
-    const response = await axios.get('metrics/', {
-      headers: {
-        Authorization: `Bearer ${authStore.token}`
-      }
+    // Use the full API URL if needed:
+    const response = await axios.get('http://localhost:8000/api/metrics/', {
+      headers: { Authorization: `Bearer ${authStore.token}` }
     });
 
-    // если бекенд вернул 204 No Content — показываем сообщение
-    if (response.status === 204) {
-      error.value = 'Нет доступных метрик.';
-    } else {
-      metrics.value = response.data;
+    // Check if the response is in fact HTML rather than JSON.
+    if (
+      typeof response.data === 'string' &&
+      response.data.trim().toLowerCase().startsWith('<!doctype html>')
+    ) {
+      throw new Error('Получен HTML вместо ожидаемого JSON. Проверьте URL или настройки сервера.');
     }
+
+    metrics.value = response.data;
   } catch (err) {
-    error.value = err.response?.data?.error || 'Ошибка загрузки метрик.';
+    error.value = err.response?.data?.error || err.message || 'Ошибка загрузки метрик.';
   } finally {
     loading.value = false;
   }
