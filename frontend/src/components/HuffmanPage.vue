@@ -21,6 +21,7 @@
           </tr>
         </tbody>
       </table>
+
       <h3 class="font-semibold mt-4">📄 Закодированный текст (encoded_text):</h3>
       <pre class="encoded-text">{{ huffmanData.encoded_text }}</pre>
     </div>
@@ -39,28 +40,44 @@ const authStore = useAuthStore();
 const huffmanData = ref(null);
 const loading = ref(false);
 const error = ref('');
+const errorDetails = ref(null); // Store detailed error information
 
 onMounted(async () => {
   const documentId = route.params.id;
   loading.value = true;
   try {
-    const response = await axios.get(`api/documents/${documentId}/huffman/`, {
+    const response = await axios.get(`documents/${documentId}/huffman/`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
 
     // Ensure valid JSON response before setting data
-    if (typeof response.data !== 'object' || !response.data.huffman_codes) {
-      throw new Error('Некорректные данные от сервера.');
+    if (!response.data || typeof response.data !== 'object' || !response.data.huffman_codes) {
+      throw new Error('Некорректные данные от сервера. Ожидался JSON-объект.');
     }
 
     huffmanData.value = response.data;
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Ошибка загрузки данных.';
+    if (err.response) {
+      // Capture detailed server response
+      errorDetails.value = {
+        status: err.response.status,
+        statusText: err.response.statusText,
+        data: err.response.data
+      };
+      error.value = `Ошибка загрузки данных: ${err.response.status} ${err.response.statusText}`;
+    } else if (err.request) {
+      // Capture request-related errors (no response from server)
+      error.value = 'Сервер не ответил. Проверьте подключение.';
+    } else {
+      // Capture unexpected errors
+      error.value = `Непредвиденная ошибка: ${err.message}`;
+    }
   } finally {
     loading.value = false;
   }
 });
 </script>
+
 
 <style scoped>
 .error {
