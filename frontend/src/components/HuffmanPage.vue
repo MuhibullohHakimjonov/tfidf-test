@@ -30,7 +30,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import axios from '../api';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
