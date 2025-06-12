@@ -98,10 +98,10 @@ REDIS_HOST=redis
 REDIS_PORT=redis_port
 ```
 --------
-3. В nginx/default.conf: Замените 37.9.53.228 на ip вашего vm
+3. В директории nginx/default.conf: Замените 37.9.53.228 на ip вашего vm
 
 ---------
-4. Создать .env файл внутри 'frontend/' и указать параметр
+4. Создать .env файл внутри директории 'frontend/' и указать параметр
    Пример .env файла:
 ------
 ```text
