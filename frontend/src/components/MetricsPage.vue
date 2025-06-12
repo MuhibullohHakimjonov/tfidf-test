@@ -86,7 +86,7 @@ onMounted(async () => {
     const response = await axios.get('metrics/', {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
-
+    console.log(response)
     // Check if the response is in fact HTML rather than JSON.
     if (
       typeof response.data === 'string' &&
