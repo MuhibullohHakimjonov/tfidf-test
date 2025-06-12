@@ -83,7 +83,7 @@ onMounted(async () => {
   loading.value = true;
   try {
     // Use the full API URL if needed:
-    const response = await axios.get('metrics/', {
+    const response = await axios.get('api/metrics/', {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
     console.log(response)
