@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (TFIDFMongoUploadView, MetricsView, VersionView, UserDocumentListView, DocumentContentView,
 					DocumentStatisticsView, DocumentDeleteView, CollectionListView, CollectionDetailView,
 					CollectionStatisticsView, AddDocumentToCollectionView, RemoveDocumentFromCollectionView,
-					CollectionCreateView, DeleteCollectionView
+					CollectionCreateView, DeleteCollectionView, DocumentHuffmanView
 					)
 
 urlpatterns = [
@@ -12,6 +12,7 @@ urlpatterns = [
 
 	path('documents/', UserDocumentListView.as_view()),
 	path('documents/<int:document_id>/', DocumentContentView.as_view()),
+	path('documents/<int:document_id>/huffman/', DocumentHuffmanView.as_view()),
 	path('documents/<int:document_id>/statistics/', DocumentStatisticsView.as_view()),
 	path('documents/<int:document_id>/delete/', DocumentDeleteView.as_view()),
 

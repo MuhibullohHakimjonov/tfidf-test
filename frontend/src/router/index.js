@@ -9,6 +9,8 @@ import DocumentDetail from '../components/DocumentDetail.vue';
 import DocumentStatistics from '../components/DocumentStatistics.vue';
 import CollectionList from '../components/CollectionList.vue';
 import ProfilePage from '../components/ProfilePage.vue';
+import MetricsPage from '../components/MetricsPage.vue';
+import HuffmanPage from '../components/HuffmanPage.vue';
 import CollectionDetail from '../components/CollectionDetail.vue';
 
 const routes = [
@@ -18,9 +20,11 @@ const routes = [
   { path: '/', component: FileUpload, meta: { requiresAuth: true } },
   { path: '/documents', component: DocumentList, meta: { requiresAuth: true } },
   { path: '/documents/:id', component: DocumentDetail, props: true, meta: { requiresAuth: true } },
+  { path: '/documents/:id/huffman', component: HuffmanPage, props: true, meta: { requiresAuth: true } },
   { path: '/documents/:id/statistics', component: DocumentStatistics, props: true, meta: { requiresAuth: true } },
   { path: '/collections', component: CollectionList, meta: { requiresAuth: true } },
   { path: '/collections/:id', component: CollectionDetail, meta: { requiresAuth: true } },
+  { path: '/metrics', component: MetricsPage, meta: { requiresAuth: true } },
   { path: '/profile', name: 'Profile', component: ProfilePage, meta: { requiresAuth: true } }
 ];
 

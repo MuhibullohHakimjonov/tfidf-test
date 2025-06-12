@@ -8,17 +8,18 @@
           <th>Действия</th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-for="doc in documents" :key="doc.id">
-          <td>{{ doc.name }}</td>
-          <td class="actions-cell">
-            <router-link :to="`/documents/${doc.id}`" class="btn view-btn" title="Просмотреть">👁️</router-link>
-            <router-link :to="`/documents/${doc.id}/statistics`" class="btn stats-btn" title="Статистика">📊</router-link>
-            <button @click="openAddToCollection(doc.id)" class="btn add-btn" title="В коллекцию">➕</button>
-            <button @click="deleteDocument(doc.id)" class="btn delete-btn" title="Удалить">🗑️</button>
-          </td>
-        </tr>
-      </tbody>
+        <tbody>
+          <tr v-for="doc in documents" :key="doc.id">
+            <td>{{ doc.name }}</td>
+            <td class="actions-cell">
+              <router-link :to="`/documents/${doc.id}`" class="btn view-btn" title="Просмотреть">👁️</router-link>
+              <router-link :to="`/documents/${doc.id}/statistics`" class="btn stats-btn" title="Статистика">📊</router-link>
+              <router-link :to="`/documents/${doc.id}/huffman`" class="btn huffman-btn" title="Код Хаффмана">🔤</router-link>
+              <button @click="openAddToCollection(doc.id)" class="btn add-btn" title="В коллекцию">➕</button>
+              <button @click="deleteDocument(doc.id)" class="btn delete-btn" title="Удалить">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
     </table>
     <p v-else class="no-docs-text">Нет загруженных документов.</p>
 

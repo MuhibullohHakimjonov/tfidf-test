@@ -1,12 +1,11 @@
 from datetime import datetime
-
+from .mongo import update_global_metrics
+import time
 from bson import ObjectId
 from rest_framework import serializers
 from .models import Document, Collection
 from .mongo import get_documents_collection
 from .utils import compute_global_tfidf_table
-
-
 
 
 class TFIDFUploadSerializer(serializers.Serializer):
@@ -30,6 +29,7 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		user = self.context['request'].user
 		files = validated_data['files']
 		texts = [f.read().decode('utf-8').strip() for f in files]
+		start_time = time.time()
 
 		tfidf_results, word_counts = compute_global_tfidf_table(texts)
 		documents_collection = get_documents_collection()
@@ -57,6 +57,10 @@ class TFIDFUploadSerializer(serializers.Serializer):
 				word_count=wc,
 				mongo_id=str(mongo_id)
 			)
+
+		processing_time = round(time.time() - start_time, 3)
+		files_count = len(files)
+		update_global_metrics(processing_time, files_count)
 
 		top_words = []
 		if tfidf_results:
@@ -128,7 +132,6 @@ class DocumentSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Document
 		fields = ['id', 'name', 'size', 'word_count', 'created_at', 'mongo_id', 'collections']
-
 
 
 class CollectionSerializer(serializers.ModelSerializer):

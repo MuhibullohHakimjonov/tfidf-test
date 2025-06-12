@@ -3,6 +3,7 @@
     <router-link to="/" class="nav-link">Загрузить</router-link>
     <router-link to="/documents" class="nav-link">Документы</router-link>
     <router-link to="/collections" class="nav-link">Коллекции</router-link>
+    <router-link v-if="isAuthenticated" to="/metrics" class="nav-link">Метрики</router-link>
     <router-link v-if="isAuthenticated" to="/profile" class="nav-link ml-auto">Профиль</router-link>
     <div class="ml-auto" v-else>
       <router-link to="/login" class="nav-link">Войти</router-link>

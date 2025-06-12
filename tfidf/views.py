@@ -4,16 +4,16 @@ from rest_framework.parsers import MultiPartParser
 from datetime import datetime
 from rest_framework import status, permissions
 from bson import ObjectId
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
 from .models import Document, Collection
-from .mongo import get_documents_collection, get_mongo_collections
+from .mongo import get_documents_collection, get_metrics_collection
 from .serializers import CollectionSerializer, DocumentSerializer, CollectionCreateSerializer, TFIDFUploadSerializer, \
 	DocumentStatisticsSerializer, CollectionStatisticsSerializer
-
+from .utils import build_huffman_tree, generate_codes, huffman_encode
 
 
 class TFIDFMongoUploadView(APIView):
@@ -32,36 +32,84 @@ class TFIDFMongoUploadView(APIView):
 
 
 class MetricsView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
 	def get(self, request):
 		try:
-			collections = get_mongo_collections()
-			documents = list(collections["documents_collection"].find({}))
+			metrics_collection = get_metrics_collection()
 
-			if not documents:
-				return Response({"message": "No data available"}, status=status.HTTP_204_NO_CONTENT)
+			if request.user.is_superuser or request.user.is_staff:
+				metrics = metrics_collection.find_one({"_id": "global_metrics"})
 
-			word_counts = [d.get("word_count", 0) for d in documents]
-			file_sizes = [d.get("file_size", 0) for d in documents]
-			timestamps = [
-				datetime.fromisoformat(d["uploaded_at"]) for d in documents if "uploaded_at" in d
-			]
+				if not metrics:
+					return Response({"message": "No global metrics available."}, status=status.HTTP_204_NO_CONTENT)
 
-			metrics = {
-				"files_processed": len(documents),
-				"avg_file_size": round(sum(file_sizes) / len(file_sizes), 3) if file_sizes else 0,
-				"total_words_processed": sum(word_counts),
-				"avg_words_per_file": round(sum(word_counts) / len(word_counts), 3) if word_counts else 0,
-				"latest_file_processed_timestamp": round(max(timestamps).timestamp(), 3) if timestamps else None,
-			}
+				total_batches = metrics.get("total_batches_uploaded", 0)
+				avg_time = round(metrics["sum_time_processed"] / total_batches, 3) if total_batches > 0 else 0.0
 
-			return Response(metrics, status=status.HTTP_200_OK)
+				response_data = {
+					"files_processed": metrics["total_files_uploaded"],
+					"min_time_processed": round(metrics["min_time_processed"], 3),
+					"avg_time_processed": avg_time,
+					"max_time_processed": round(metrics["max_time_processed"], 3),
+					"latest_file_processed_timestamp": round(metrics["latest_file_processed_timestamp"], 3)
+				}
+			else:
+				user_files = Document.objects.filter(user=request.user)
+				files_count = user_files.count()
+
+				if files_count == 0:
+					return Response({"message": "No user metrics available."}, status=status.HTTP_204_NO_CONTENT)
+
+				sizes = list(user_files.values_list('size', flat=True))
+				word_counts = list(user_files.values_list('word_count', flat=True))
+
+				response_data = {
+					"files_processed": files_count,
+					"min_file_size": min(sizes),
+					"avg_file_size": round(sum(sizes) / files_count, 3),
+					"max_file_size": max(sizes),
+					"min_word_count": min(word_counts),
+					"avg_word_count": round(sum(word_counts) / files_count, 3),
+					"max_word_count": max(word_counts),
+				}
+
+			return Response(response_data, status=status.HTTP_200_OK)
+
 		except Exception as e:
-			return Response({"error": f"Error retrieving metrics: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+			return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class VersionView(APIView):
 	def get(self, request):
 		return Response({'version': '2.0'}, status=status.HTTP_200_OK)
+
+
+class DocumentHuffmanView(APIView):
+	permission_classes = [permissions.IsAuthenticated]
+
+	def get(self, request, document_id):
+		doc = Document.objects.filter(id=document_id, user=request.user).first()
+		if not doc:
+			raise Http404("Document not found")
+
+		mongo_doc = get_documents_collection().find_one({"_id": ObjectId(doc.mongo_id)})
+		if not mongo_doc:
+			raise Http404("Document content not found in MongoDB")
+
+		content = mongo_doc.get("content", "")
+		if not content:
+			return JsonResponse({"error": "Document content is empty"}, status=400)
+
+		# Huffman encoding
+		tree = build_huffman_tree(content)
+		code_map = generate_codes(tree)
+		encoded_text = huffman_encode(content, code_map)
+
+		return JsonResponse({
+			"huffman_codes": code_map,
+			"encoded_text": encoded_text
+		}, json_dumps_params={'ensure_ascii': False})
 
 
 class UserDocumentListView(APIView):
