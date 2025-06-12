@@ -49,7 +49,7 @@ onMounted(async () => {
   const documentId = route.params.id;
   loading.value = true;
   try {
-    const response = await axios.get(`http://localhost:8000/api/documents/${documentId}/huffman/`, {
+    const response = await axios.get(`documents/${documentId}/huffman/`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
     huffmanData.value = response.data;

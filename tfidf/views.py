@@ -1,7 +1,6 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser
-from datetime import datetime
 from rest_framework import status, permissions
 from bson import ObjectId
 from django.http import Http404, JsonResponse
@@ -39,20 +38,22 @@ class MetricsView(APIView):
 			metrics_collection = get_metrics_collection()
 
 			if request.user.is_superuser or request.user.is_staff:
+				# Админ/персонал — глобальные метрики из MongoDB
 				metrics = metrics_collection.find_one({"_id": "global_metrics"})
 
 				if not metrics:
 					return Response({"message": "No global metrics available."}, status=status.HTTP_204_NO_CONTENT)
 
 				total_batches = metrics.get("total_batches_uploaded", 0)
-				avg_time = round(metrics["sum_time_processed"] / total_batches, 3) if total_batches > 0 else 0.0
+				avg_time = round(metrics.get("sum_time_processed", 0.0) / total_batches,
+								 3) if total_batches > 0 else 0.0
 
 				response_data = {
-					"files_processed": metrics["total_files_uploaded"],
-					"min_time_processed": round(metrics["min_time_processed"], 3),
+					"files_processed": metrics.get("total_files_uploaded", 0),
+					"min_time_processed": round(metrics.get("min_time_processed", 0.0), 3),
 					"avg_time_processed": avg_time,
-					"max_time_processed": round(metrics["max_time_processed"], 3),
-					"latest_file_processed_timestamp": round(metrics["latest_file_processed_timestamp"], 3)
+					"max_time_processed": round(metrics.get("max_time_processed", 0.0), 3),
+					"latest_file_processed_timestamp": round(metrics.get("latest_file_processed_timestamp", 0.0), 3)
 				}
 			else:
 				user_files = Document.objects.filter(user=request.user)
