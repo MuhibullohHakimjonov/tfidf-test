@@ -61,14 +61,13 @@
 - [Docker Compose](https://docs.docker.com/compose/)
 
 ### 🛠 Шаги для запуска
-
 1. **Клонировать репозиторий:**
 
 ```bash
    git clone https://github.com/MuhibullohHakimjonov/tfidf-test.git
    cd tfidf-test
 ```
-
+------
 2. Создать .env файл в корневом каталоге и указать параметры
 
 Пример .env файла:
@@ -93,30 +92,32 @@ MONGO_DB_NAME=example_db
 
 # Email
 EMAIL_HOST_USER=your-email
-EMAIL_HOST_PASSWORD=your-password # чтобы получить пароль: https://www.getmailbird.com/ru/parol-prilozheniya-gmail/
+EMAIL_HOST_PASSWORD=your-password # Инструкция как получить пароль: https://www.getmailbird.com/ru/parol-prilozheniya-gmail/
 
 REDIS_HOST=redis
 REDIS_PORT=redis_port
 ```
-
+--------
 3. В nginx/default.conf: Замените 37.9.53.228 на ip вашего vm
 
-
+---------
 4. Создать .env файл внутри 'frontend/' и указать параметр
    Пример .env файла:
-
+------
 ```text
 VITE_API_URL=http://ip вашего vm/api/
 ```
-
+----
 5. Построить и запустить контейнеры:
-
+----
 ```bash
   docker compose up --build -d
 ```
+---
 
-6. чтобы открыть: http:// ip-вашего-vm /
+6. Чтобы открыть: http:// ip-вашего-vm /
 
+-----
 📦 Версия приложения
 v2.0
 
