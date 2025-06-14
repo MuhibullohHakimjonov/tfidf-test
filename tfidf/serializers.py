@@ -15,20 +15,26 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		write_only=True
 	)
 
-	def validate_files(self, files):
+	def validate(self, data):
+		files = data['files']
+		decoded_texts = []
+
 		for f in files:
 			try:
-				f.read().decode('utf-8').strip()
-				f.seek(0)
+				content = f.read().decode('utf-8').strip()
+				decoded_texts.append(content)
+				f.seek(0)  # если Django повторно будет обращаться к файлу
 			except UnicodeDecodeError:
-				raise serializers.ValidationError("Only UTF-8 encoded text files are allowed.")
+				raise serializers.ValidationError(f"File '{f.name}' is not UTF-8 encoded.")
 
-		return files
+		data['decoded_texts'] = decoded_texts  # Кэшируем прочитанные тексты
+		return data
 
 	def create(self, validated_data):
 		user = self.context['request'].user
 		files = validated_data['files']
-		texts = [f.read().decode('utf-8').strip() for f in files]
+		texts = validated_data['decoded_texts']
+
 		start_time = time.time()
 
 		tfidf_results, word_counts = compute_global_tfidf_table(texts)
