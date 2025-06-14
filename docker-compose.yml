@@ -35,10 +35,6 @@ services:
     build:
       context: ./frontend
     container_name: vue_frontend
-    volumes:
-      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
-    expose:
-      - "3000"
     networks:
       - backend
 
@@ -83,6 +79,7 @@ services:
       - .env
     networks:
       - backend
+
 
 volumes:
   postgres_data:
