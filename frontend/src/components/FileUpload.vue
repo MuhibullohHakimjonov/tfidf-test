@@ -8,7 +8,7 @@
 
     <div class="card">
       <h2 class="text-xl mb-4">Загрузить документ(ы)</h2>
-      <p>*Общий размер файлов не должно превышать 15 мб</p>
+      <p>*Общий размер файлов не должно превышать 10 мб</p>
 
       <div class="file-input-wrapper">
         <input type="file" multiple @change="handleFile" ref="fileInput" class="mb-2 file-input" />
