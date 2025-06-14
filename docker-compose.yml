@@ -30,6 +30,8 @@ services:
       - mongo
     networks:
       - backend
+    mem_limit: 512m
+    cpus: "1.0"
 
   frontend:
     build:
@@ -49,12 +51,16 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
+    mem_limit: 512m
+    cpus: "1.0"
 
   redis:
     image: redis:7-alpine
     container_name: redis
     networks:
       - backend
+    mem_limit: 256m
+    cpus: "0.5"
 
   mongo:
     image: mongo:6-jammy
@@ -66,11 +72,13 @@ services:
       - mongo_data:/data/db
     networks:
       - backend
+    mem_limit: 512m
+    cpus: "1.0"
 
   celery:
     build: .
     container_name: celery_worker
-    command: celery -A config worker --loglevel=info
+    command: celery -A config worker --loglevel=info --concurrency=4
     depends_on:
       - redis
       - postgres
@@ -79,7 +87,8 @@ services:
       - .env
     networks:
       - backend
-
+    mem_limit: 512m
+    cpus: "0.5"
 
 volumes:
   postgres_data:
