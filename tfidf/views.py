@@ -38,7 +38,6 @@ class MetricsView(APIView):
 			metrics_collection = get_metrics_collection()
 
 			if request.user.is_superuser or request.user.is_staff:
-				# Админ/персонал — глобальные метрики из MongoDB
 				metrics = metrics_collection.find_one({"_id": "global_metrics"})
 
 				if not metrics:
@@ -101,8 +100,6 @@ class DocumentHuffmanView(APIView):
 		content = mongo_doc.get("content", "")
 		if not content:
 			return JsonResponse({"error": "Document content is empty"}, status=400)
-
-		# Huffman encoding
 		tree = build_huffman_tree(content)
 		code_map = generate_codes(tree)
 		encoded_text = huffman_encode(content, code_map)
@@ -130,10 +127,25 @@ class DocumentContentView(APIView):
 
 	def get(self, request, document_id):
 		doc = get_object_or_404(Document, id=document_id, user=request.user)
-		mongo_doc = get_documents_collection().find_one({"_id": ObjectId(doc.mongo_id)})
+		mongo_doc = get_documents_collection().find_one(
+			{"_id": ObjectId(doc.mongo_id)}, {"content": 1}
+		)
 		if not mongo_doc:
 			raise Http404("Document not found in MongoDB")
-		return Response({"content": mongo_doc.get("content", "")})
+
+		content = mongo_doc.get("content", "")
+		offset = int(request.query_params.get("offset", 0))
+		limit = int(request.query_params.get("limit", 5000))
+
+		sliced_content = content[offset:offset + limit]
+
+		return Response({
+			"content": sliced_content,
+			"total_size": len(content),
+			"offset": offset,
+			"limit": limit,
+			"is_end": offset + limit >= len(content)
+		})
 
 
 class DocumentStatisticsView(APIView):

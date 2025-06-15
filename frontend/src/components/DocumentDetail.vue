@@ -4,6 +4,14 @@
     <div v-if="loading">Загрузка...</div>
     <div v-else-if="error" class="text-red-500">{{ error }}</div>
     <pre v-else class="bg-gray-100 p-4 rounded">{{ content }}</pre>
+    <button
+      v-if="!isEnd && !loadingMore"
+      @click="loadMore"
+      class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+    >
+      Загрузить ещё
+    </button>
+    <div v-if="loadingMore">Загрузка ещё...</div>
   </div>
 </template>
 
@@ -16,20 +24,42 @@ const route = useRoute();
 const content = ref('');
 const loading = ref(true);
 const error = ref(null);
+const offset = ref(0);
+const limit = 5000; // загружать по 5000 символов
+const totalSize = ref(0);
+const isEnd = ref(false);
+const loadingMore = ref(false);
 
-onMounted(async () => {
-  loading.value = true;
-  error.value = null;
+const loadContent = async (isLoadMore = false) => {
   try {
-    const response = await axios.get(`documents/${route.params.id}/`);
-    content.value = response.data.content; // Access the content field
+    const response = await axios.get(`documents/${route.params.id}/`, {
+      params: { offset: offset.value, limit }
+    });
+    if (isLoadMore) {
+      content.value += response.data.content;
+    } else {
+      content.value = response.data.content;
+    }
+    totalSize.value = response.data.total_size;
+    isEnd.value = response.data.is_end;
+    offset.value += limit;
   } catch (err) {
     error.value = 'Не удалось загрузить содержимое документа.';
     console.error(err);
-  } finally {
-    loading.value = false;
   }
+};
+
+onMounted(async () => {
+  loading.value = true;
+  await loadContent();
+  loading.value = false;
 });
+
+const loadMore = async () => {
+  loadingMore.value = true;
+  await loadContent(true);
+  loadingMore.value = false;
+};
 </script>
 
 <style scoped>
@@ -63,5 +93,9 @@ pre {
   white-space: pre-wrap;
   word-wrap: break-word;
   font-family: monospace;
+}
+
+button {
+  cursor: pointer;
 }
 </style>
