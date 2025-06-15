@@ -62,7 +62,7 @@ def update_global_metrics(processing_time: float, files_count: int):
 			{"_id": "global_metrics"},
 			{"$set": {
 				"total_batches_uploaded": total_batches,
-				"total_files_uploaded": total_files,  # ← обновляем файлы
+				"total_files_uploaded": total_files,
 				"total_processing_time": total_processing,
 				"min_time_processed": min_time,
 				"max_time_processed": max_time,
