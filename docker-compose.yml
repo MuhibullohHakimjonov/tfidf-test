@@ -13,8 +13,7 @@ services:
       - frontend
     networks:
       - backend
-    mem_limit: 128m
-    cpus: "0.5"
+
 
   web:
     build: .
@@ -32,8 +31,6 @@ services:
       - mongo
     networks:
       - backend
-    mem_limit: 512m
-    cpus: "1.0"
 
   frontend:
     build:
@@ -41,8 +38,6 @@ services:
     container_name: vue_frontend
     networks:
       - backend
-    mem_limit: 384m
-    cpus: "0.5"
 
   postgres:
     image: postgres:15-alpine
@@ -55,16 +50,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
-    mem_limit: 768m
-    cpus: "1.0"
 
   redis:
     image: redis:7-alpine
     container_name: redis
     networks:
       - backend
-    mem_limit: 256m
-    cpus: "0.5"
 
   mongo:
     image: mongo:6-jammy
@@ -76,8 +67,6 @@ services:
       - mongo_data:/data/db
     networks:
       - backend
-    mem_limit: 512m
-    cpus: "1.0"
 
   celery:
     build: .
@@ -91,8 +80,7 @@ services:
       - .env
     networks:
       - backend
-    mem_limit: 512m
-    cpus: "0.5"
+
 
 volumes:
   postgres_data:
