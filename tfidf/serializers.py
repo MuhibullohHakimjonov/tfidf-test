@@ -16,18 +16,15 @@ class TFIDFUploadSerializer(serializers.Serializer):
 	)
 
 	def validate(self, data):
-		files = data['files']
 		decoded_texts = []
-
-		for f in files:
+		for f in data['files']:
 			try:
 				content = f.read().decode('utf-8').strip()
 				decoded_texts.append(content)
-				f.seek(0)  # если Django повторно будет обращаться к файлу
+				f.seek(0)
 			except UnicodeDecodeError:
 				raise serializers.ValidationError(f"File '{f.name}' is not UTF-8 encoded.")
-
-		data['decoded_texts'] = decoded_texts  # Кэшируем прочитанные тексты
+		data['decoded_texts'] = decoded_texts
 		return data
 
 	def create(self, validated_data):
@@ -36,21 +33,18 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		texts = validated_data['decoded_texts']
 
 		start_time = time.time()
-
 		tfidf_results, word_counts = compute_global_tfidf_table(texts)
-		documents_collection = get_documents_collection()
 		now = datetime.utcnow().isoformat()
 
-		documents = []
-		for f, text, tfidf, wc in zip(files, texts, tfidf_results, word_counts):
-			documents.append({
-				"file_name": f.name,
-				"file_size": f.size,
-				"word_count": wc,
-				"content": text,
-				"tfidf_data": tfidf,
-				"uploaded_at": now
-			})
+		documents_collection = get_documents_collection()
+		documents = [{
+			"file_name": f.name,
+			"file_size": f.size,
+			"word_count": wc,
+			"content": text,
+			"tfidf_data": tfidf,
+			"uploaded_at": now
+		} for f, text, tfidf, wc in zip(files, texts, tfidf_results, word_counts)]
 
 		result = documents_collection.insert_many(documents)
 		inserted_ids = result.inserted_ids
@@ -65,20 +59,16 @@ class TFIDFUploadSerializer(serializers.Serializer):
 			)
 
 		processing_time = round(time.time() - start_time, 3)
-		files_count = len(files)
-		update_global_metrics(processing_time, files_count)
-
+		update_global_metrics(processing_time, len(files))
 		top_words = []
 		if tfidf_results:
-			for i, item in enumerate(tfidf_results[0][:50]):
+			for i, item in enumerate(tfidf_results[0]):
 				word = item["word"]
 				idf = item["idf"]
-				avg_tf = sum(doc[i]["tf"] for doc in tfidf_results if i < len(doc)) / len(tfidf_results)
-				top_words.append({
-					"word": word,
-					"idf": round(idf, 6),
-					"tf": round(avg_tf, 6)
-				})
+				avg_tf = round(
+					sum(doc[i]["tf"] for doc in tfidf_results) / len(tfidf_results), 6
+				)
+				top_words.append({"word": word, "idf": idf, "tf": avg_tf})
 
 		return {
 			"files": [

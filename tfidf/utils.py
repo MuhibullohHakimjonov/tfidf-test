@@ -14,32 +14,39 @@ def compute_global_tfidf_table(documents):
 	N = len(documents)
 	df = defaultdict(int)
 	tokenized_docs = []
+
+	# Предварительная токенизация всех документов + расчет DF
 	for doc in documents:
 		tokens = tokenize(doc)
 		tokenized_docs.append(tokens)
-		for word in set(tokens):
+		unique_tokens = set(tokens)
+		for word in unique_tokens:
 			df[word] += 1
 
+	# IDF для всех слов
 	global_idf = {word: math.log(N / count) for word, count in df.items()}
-	top_50_words = sorted(global_idf.items(), key=lambda x: x[1], reverse=True)[:50]
-	top_words = [word for word, _ in top_50_words]
+
+	# Топ-50 слов по IDF
+	top_words = heapq.nlargest(50, global_idf.items(), key=lambda x: x[1])
+	top_word_list = [word for word, _ in top_words]
+
 	results = []
 	word_counts = []
+
+	# Расчет TF для топ-50 слов по каждому документу
 	for tokens in tokenized_docs:
 		total_words = len(tokens)
 		word_counts.append(total_words)
 
 		tf_counter = Counter(tokens)
-		doc_result = []
-
-		for word in top_words:
-			tf = tf_counter[word] / total_words if total_words else 0
-			doc_result.append({
+		doc_result = [
+			{
 				"word": word,
-				"tf": round(tf, 6),
+				"tf": round(tf_counter[word] / total_words, 6) if total_words else 0,
 				"idf": round(global_idf[word], 6)
-			})
-
+			}
+			for word in top_word_list
+		]
 		results.append(doc_result)
 
 	return results, word_counts
