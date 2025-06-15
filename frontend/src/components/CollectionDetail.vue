@@ -121,7 +121,7 @@ const sortedTopWords = computed(() => {
 const removeDocument = async (documentId) => {
   if (!confirm('Вы уверены, что хотите удалить этот документ из коллекции?')) return;
   try {
-    await axios.delete(`collection/${route.params.id}/${documentId}/delete/`);
+    await axios.delete(`collections/${route.params.id}/${documentId}/delete/`);
     collection.value.documents = collection.value.documents.filter(
       doc => doc.id !== documentId
     );

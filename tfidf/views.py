@@ -83,7 +83,7 @@ class MetricsView(APIView):
 
 class VersionView(APIView):
 	def get(self, request):
-		return Response({'version': '2.0'}, status=status.HTTP_200_OK)
+		return Response({'version': '3.0'}, status=status.HTTP_200_OK)
 
 
 class DocumentHuffmanView(APIView):

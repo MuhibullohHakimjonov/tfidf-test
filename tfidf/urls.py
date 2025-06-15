@@ -20,7 +20,7 @@ urlpatterns = [
 	path('collections/', CollectionListView.as_view()),
 	path('collections/<int:collection_id>/', CollectionDetailView.as_view()),
 	path('collections/<int:collection_id>/statistics/', CollectionStatisticsView.as_view()),
-	path('collection/<int:collection_id>/<int:document_id>/', AddDocumentToCollectionView.as_view()),
-	path('collection/<int:collection_id>/<int:document_id>/delete/', RemoveDocumentFromCollectionView.as_view()),
-	path('collection/<int:collection_id>/delete/', DeleteCollectionView.as_view())
+	path('collections/<int:collection_id>/<int:document_id>/', AddDocumentToCollectionView.as_view()),
+	path('collections/<int:collection_id>/<int:document_id>/delete/', RemoveDocumentFromCollectionView.as_view()),
+	path('collections/<int:collection_id>/delete/', DeleteCollectionView.as_view())
 ]

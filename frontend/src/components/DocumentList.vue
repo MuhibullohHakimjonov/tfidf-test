@@ -131,7 +131,7 @@ const showNotification = (message, color) => {
 const addToCollection = async () => {
   if (!selectedCollectionId.value || !selectedDocumentId.value) return;
   try {
-    await axios.post(`collection/${selectedCollectionId.value}/${selectedDocumentId.value}/`);
+    await axios.post(`collections/${selectedCollectionId.value}/${selectedDocumentId.value}/`);
     showNotification("Документ добавлен в коллекцию!", "green");
     closeModal();
   } catch (error) {

@@ -73,7 +73,7 @@ const fetchCollections = async () => {
 };
 const deleteCollection = async (collectionId) => {
   try {
-    await axios.delete(`collection/${collectionId}/delete/`);
+    await axios.delete(`collections/${collectionId}/delete/`);
     collections.value = collections.value.filter(collection => collection.id !== collectionId);
     showNotification("Коллекция удалена успешно!", "green");
   } catch (error) {
