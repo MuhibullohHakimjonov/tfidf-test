@@ -24,6 +24,25 @@
 
       <h3 class="font-semibold mt-4">📄 Закодированный текст (encoded_text):</h3>
       <pre class="encoded-text">{{ huffmanData.encoded_text }}</pre>
+
+      <!-- Pagination controls -->
+      <div class="mt-4 flex justify-center space-x-4">
+        <button
+          @click="prevPage"
+          :disabled="offset === 0"
+          class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Назад
+        </button>
+        <span>Показано с {{ offset }} до {{ Math.min(offset + limit, huffmanData.total_size) }} из {{ huffmanData.total_size }}</span>
+        <button
+          @click="nextPage"
+          :disabled="huffmanData.is_end"
+          class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Вперёд
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -40,25 +59,28 @@ const authStore = useAuthStore();
 const huffmanData = ref(null);
 const loading = ref(false);
 const error = ref('');
-const errorDetails = ref(null); // Store detailed error information
+const errorDetails = ref(null);
 
-onMounted(async () => {
+const limit = 10000; // сколько символов показывать за раз
+const offset = ref(0);
+
+const fetchHuffmanData = async () => {
   const documentId = route.params.id;
   loading.value = true;
+  error.value = '';
   try {
     const response = await axios.get(`documents/${documentId}/huffman/`, {
-      headers: { Authorization: `Bearer ${authStore.token}` }
+      headers: { Authorization: `Bearer ${authStore.token}` },
+      params: { offset: offset.value, limit }
     });
 
-    // Ensure valid JSON response before setting data
     if (!response.data || typeof response.data !== 'object' || !response.data.huffman_codes) {
-      throw new Error('Некорректные данные от сервера. Ожидался JSON-объект.');
+      throw new Error('Некорректные данные от сервера.');
     }
 
     huffmanData.value = response.data;
   } catch (err) {
     if (err.response) {
-      // Capture detailed server response
       errorDetails.value = {
         status: err.response.status,
         statusText: err.response.statusText,
@@ -66,18 +88,33 @@ onMounted(async () => {
       };
       error.value = `Ошибка загрузки данных: ${err.response.status} ${err.response.statusText}`;
     } else if (err.request) {
-      // Capture request-related errors (no response from server)
       error.value = 'Сервер не ответил. Проверьте подключение.';
     } else {
-      // Capture unexpected errors
       error.value = `Непредвиденная ошибка: ${err.message}`;
     }
   } finally {
     loading.value = false;
   }
+};
+
+const nextPage = () => {
+  if (!huffmanData.value.is_end) {
+    offset.value += limit;
+    fetchHuffmanData();
+  }
+};
+
+const prevPage = () => {
+  if (offset.value >= limit) {
+    offset.value -= limit;
+    fetchHuffmanData();
+  }
+};
+
+onMounted(() => {
+  fetchHuffmanData();
 });
 </script>
-
 
 <style scoped>
 .error {

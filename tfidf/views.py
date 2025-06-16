@@ -100,13 +100,26 @@ class DocumentHuffmanView(APIView):
 		content = mongo_doc.get("content", "")
 		if not content:
 			return JsonResponse({"error": "Document content is empty"}, status=400)
+
 		tree = build_huffman_tree(content)
 		code_map = generate_codes(tree)
 		encoded_text = huffman_encode(content, code_map)
 
+		# пагинация
+		offset = int(request.GET.get('offset', 0))
+		limit = int(request.GET.get('limit', 10000))
+		total_size = len(encoded_text)
+		end = offset + limit
+		paginated_text = encoded_text[offset:end]
+		is_end = end >= total_size
+
 		return JsonResponse({
 			"huffman_codes": code_map,
-			"encoded_text": encoded_text
+			"encoded_text": paginated_text,
+			"total_size": total_size,
+			"offset": offset,
+			"limit": limit,
+			"is_end": is_end
 		}, json_dumps_params={'ensure_ascii': False})
 
 
@@ -135,7 +148,7 @@ class DocumentContentView(APIView):
 
 		content = mongo_doc.get("content", "")
 		offset = int(request.query_params.get("offset", 0))
-		limit = int(request.query_params.get("limit", 5000))
+		limit = int(request.query_params.get("limit", 10000))
 
 		sliced_content = content[offset:offset + limit]
 
