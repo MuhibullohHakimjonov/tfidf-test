@@ -13,7 +13,11 @@
             <td>{{ doc.name }}</td>
             <td class="actions-cell">
               <router-link :to="`/documents/${doc.id}`" class="btn view-btn" title="Просмотреть">👁️</router-link>
-              <router-link :to="`/documents/${doc.id}/statistics`" class="btn stats-btn" title="Статистика">📊</router-link>
+              <router-link
+                  :to="getStatisticsLink(doc)"
+                  class="btn stats-btn"
+                  title="Статистика"
+              >📊</router-link>
               <router-link :to="`/documents/${doc.id}/huffman`" class="btn huffman-btn" title="Код Хаффмана">🔤</router-link>
               <button @click="openAddToCollection(doc.id)" class="btn add-btn" title="В коллекцию">➕</button>
               <button @click="deleteDocument(doc.id)" class="btn delete-btn" title="Удалить">🗑️</button>
@@ -59,6 +63,18 @@ const collections = ref([]);
 const showModal = ref(false);
 const selectedDocumentId = ref(null);
 const selectedCollectionId = ref(null);
+
+const getStatisticsLink = (doc) => {
+  if (doc.collections && doc.collections.length > 0) {
+    return {
+      path: `api/documents/${doc.id}/statistics`,
+      query: { collection_id: doc.collections[0].id } // первая коллекция
+    };
+  } else {
+    return { path: `documents/${doc.id}/statistics` }; // если коллекций нет
+  }
+};
+
 
 const fetchDocuments = async () => {
   try {
