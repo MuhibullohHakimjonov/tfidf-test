@@ -67,7 +67,7 @@ const selectedCollectionId = ref(null);
 const getStatisticsLink = (doc) => {
   if (doc.collections && doc.collections.length > 0) {
     return {
-      path: `api/documents/${doc.id}/statistics`,
+      path: `documents/${doc.id}/statistics`,
       query: { collection_id: doc.collections[0].id } // первая коллекция
     };
   } else {
