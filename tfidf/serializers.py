@@ -91,7 +91,7 @@ class TFIDFUploadSerializer(serializers.Serializer):
 
 class TfidfEntrySerializer(serializers.Serializer):
 	word = serializers.CharField()
-	tf = serializers.FloatField()
+	tf = serializers.FloatField(source='total_tf')
 	idf = serializers.FloatField()
 
 

@@ -106,7 +106,6 @@ def update_collection_statistics_in_mongo(collection):
 
 	top_words = sorted(tfidf_combined, key=lambda x: x["idf"], reverse=True)[:50]
 
-	# Сохраняем в Mongo в коллекцию 'collection_statistics'
 	collection_stats_collection = get_mongo_db()["collection_statistics"]
 	collection_stats_collection.update_one(
 		{"collection_id": collection.id},

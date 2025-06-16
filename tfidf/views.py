@@ -12,7 +12,7 @@ from .models import Document, Collection
 from .mongo import get_documents_collection, get_metrics_collection, update_collection_statistics_in_mongo
 from .serializers import CollectionSerializer, DocumentSerializer, CollectionCreateSerializer, TFIDFUploadSerializer, \
 	DocumentStatisticsSerializer, CollectionStatisticsSerializer
-from .utils import build_huffman_tree, generate_codes, huffman_encode
+from .utils import build_huffman_tree, generate_codes, huffman_encode, compute_global_tfidf_table
 
 
 class TFIDFMongoUploadView(APIView):
@@ -153,17 +153,60 @@ class DocumentStatisticsView(APIView):
 
 	def get(self, request, document_id):
 		doc = get_object_or_404(Document, id=document_id, user=request.user)
-		mongo_doc = get_documents_collection().find_one({"_id": ObjectId(doc.mongo_id)})
-		if not mongo_doc:
-			raise Http404("Statistics not found")
+		collection_id = request.query_params.get('collection_id')
+		page = int(request.query_params.get('page', 1))
+		page_size = int(request.query_params.get('page_size', 50))
+		if collection_id:
+			collection = get_object_or_404(Collection, id=collection_id, user=request.user)
+			mongo_ids = [d.mongo_id for d in collection.documents.all()]
+			documents = list(get_documents_collection().find({
+				"_id": {"$in": [ObjectId(mongo_id) for mongo_id in mongo_ids]}
+			}))
 
-		mongo_doc["tfidf_data"] = mongo_doc.get("tfidf_data", [])[:50]
+			if not documents:
+				raise Http404("No documents found in MongoDB for this collection")
+
+			texts = [doc.get("content", "") for doc in documents]
+			tfidf_results, _ = compute_global_tfidf_table(texts)
+
+			tf_aggregated = {}
+			for d in tfidf_results:
+				for entry in d:
+					word = entry["word"]
+					tf_aggregated[word] = tf_aggregated.get(word, 0) + entry["tf"]
+
+			idf_lookup = {entry["word"]: entry["idf"] for entry in tfidf_results[0]}
+
+			tfidf_combined = [
+				{"word": word, "total_tf": round(tf, 6), "idf": round(idf_lookup[word], 6)}
+				for word, tf in tf_aggregated.items()
+			]
+
+			tfidf_data = sorted(tfidf_combined, key=lambda x: x["idf"], reverse=True)
+
+		else:
+			# Статистика только по документу
+			mongo_doc = get_documents_collection().find_one({"_id": ObjectId(doc.mongo_id)})
+			if not mongo_doc:
+				raise Http404("Statistics not found for the document")
+
+			tfidf_data = mongo_doc.get("tfidf_data", [])
+		start = (page - 1) * page_size
+		end = start + page_size
+		paginated_data = tfidf_data[start:end]
 
 		serializer = DocumentStatisticsSerializer(
-			mongo_doc,
+			{"tfidf_data": paginated_data},
 			context={"document": doc}
 		)
-		return Response(serializer.data)
+		return Response({
+			"document_id": doc.id,
+			"collection_id": collection_id,
+			"page": page,
+			"page_size": page_size,
+			"total_words": len(tfidf_data),
+			"tfidf_data": serializer.data['tfidf_data']
+		})
 
 
 class DocumentDeleteView(APIView):
