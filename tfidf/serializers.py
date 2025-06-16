@@ -33,22 +33,25 @@ class TFIDFUploadSerializer(serializers.Serializer):
 		texts = validated_data['decoded_texts']
 
 		start_time = time.time()
+		# Считаем TF-IDF, но не сохраняем в БД
 		tfidf_results, word_counts = compute_global_tfidf_table(texts)
 		now = datetime.utcnow().isoformat()
 
 		documents_collection = get_documents_collection()
+
+		# В Mongo сохраняем только контент без статистики
 		documents = [{
 			"file_name": f.name,
 			"file_size": f.size,
 			"word_count": wc,
-			"content": text,
-			"tfidf_data": tfidf,
+			"content": text,  # только содержимое
 			"uploaded_at": now
-		} for f, text, tfidf, wc in zip(files, texts, tfidf_results, word_counts)]
+		} for f, text, wc in zip(files, texts, word_counts)]
 
 		result = documents_collection.insert_many(documents)
 		inserted_ids = result.inserted_ids
 
+		# В PostgreSQL сохраняем метаданные (тоже без tfidf_data)
 		for f, wc, mongo_id in zip(files, word_counts, inserted_ids):
 			Document.objects.create(
 				user=user,
@@ -60,6 +63,8 @@ class TFIDFUploadSerializer(serializers.Serializer):
 
 		processing_time = round(time.time() - start_time, 3)
 		update_global_metrics(processing_time, len(files))
+
+		# Выводим топ-50 слов по TF-IDF из расчёта (не из БД)
 		top_words = []
 		if tfidf_results:
 			for i, item in enumerate(tfidf_results[0]):

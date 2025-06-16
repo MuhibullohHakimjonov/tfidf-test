@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
 from .models import Document, Collection
-from .mongo import get_documents_collection, get_metrics_collection
+from .mongo import get_documents_collection, get_metrics_collection, update_collection_statistics_in_mongo
 from .serializers import CollectionSerializer, DocumentSerializer, CollectionCreateSerializer, TFIDFUploadSerializer, \
 	DocumentStatisticsSerializer, CollectionStatisticsSerializer
 from .utils import build_huffman_tree, generate_codes, huffman_encode
@@ -230,8 +230,16 @@ class AddDocumentToCollectionView(APIView):
 	def post(self, request, collection_id, document_id):
 		collection = get_object_or_404(Collection, id=collection_id, user=request.user)
 		document = get_object_or_404(Document, id=document_id, user=request.user)
+
 		collection.documents.add(document)
-		return Response({"message": "Document added to collection"})
+		collection.save()
+
+		try:
+			update_collection_statistics_in_mongo(collection)
+		except Exception as e:
+			return Response({"error": f"Failed to update collection statistics: {e}"}, status=500)
+
+		return Response({"status": "Document added and collection statistics updated successfully."})
 
 
 class RemoveDocumentFromCollectionView(APIView):

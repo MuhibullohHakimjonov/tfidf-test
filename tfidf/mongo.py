@@ -1,7 +1,10 @@
 from datetime import datetime
 
+from bson import ObjectId
 from pymongo import MongoClient
 from django.conf import settings
+
+from .utils import compute_global_tfidf_table
 
 
 def get_mongo_db():
@@ -70,3 +73,50 @@ def update_global_metrics(processing_time: float, files_count: int):
 				"latest_file_processed_timestamp": timestamp
 			}}
 		)
+
+
+def update_collection_statistics_in_mongo(collection):
+	mongo_ids = [doc.mongo_id for doc in collection.documents.all()]
+	documents = list(get_documents_collection().find({
+		"_id": {"$in": [ObjectId(mongo_id) for mongo_id in mongo_ids]}
+	}))
+
+	if not documents:
+		raise ValueError("No documents found in MongoDB for this collection.")
+
+	texts = [doc.get("content", "") for doc in documents]
+	tfidf_results, _ = compute_global_tfidf_table(texts)
+
+	tf_aggregated = {}
+	for doc in tfidf_results:
+		for entry in doc:
+			word = entry["word"]
+			tf_aggregated[word] = tf_aggregated.get(word, 0) + entry["tf"]
+
+	idf_lookup = {entry["word"]: entry["idf"] for entry in tfidf_results[0]}
+
+	tfidf_combined = [
+		{
+			"word": word,
+			"total_tf": round(tf, 6),
+			"idf": round(idf_lookup[word], 6)
+		}
+		for word, tf in tf_aggregated.items()
+	]
+
+	top_words = sorted(tfidf_combined, key=lambda x: x["idf"], reverse=True)[:50]
+
+	# Сохраняем в Mongo в коллекцию 'collection_statistics'
+	collection_stats_collection = get_mongo_db()["collection_statistics"]
+	collection_stats_collection.update_one(
+		{"collection_id": collection.id},
+		{
+			"$set": {
+				"collection_id": collection.id,
+				"documents_count": len(documents),
+				"top_words": top_words,
+				"computed_at": datetime.utcnow().isoformat()
+			}
+		},
+		upsert=True
+	)
