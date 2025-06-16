@@ -72,7 +72,7 @@ const totalPages = ref(1);
 const fetchDocumentCollections = async () => {
   try {
     console.log('GET /api/documents/'); // Лог запроса
-    const res = await axios.get('/api/documents/');
+    const res = await axios.get('documents/');
     const doc = res.data.results.find(d => d.id === parseInt(route.params.id));
     collections.value = doc ? doc.collections : [];
     if (collections.value.length > 0) {
@@ -93,7 +93,7 @@ const fetchStatistics = async () => {
   error.value = null;
   try {
     const params = { page: page.value, collection_id: selectedCollectionId.value };
-    const url = `/api/documents/${route.params.id}/statistics/`;
+    const url = `documents/${route.params.id}/statistics/`;
     console.log(`GET ${url}`, params); // Лог запроса со всеми параметрами
     const res = await axios.get(url, { params });
     statistics.value = res.data.tfidf_data;
