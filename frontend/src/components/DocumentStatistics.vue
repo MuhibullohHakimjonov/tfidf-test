@@ -71,12 +71,13 @@ const totalPages = ref(1);
 
 const fetchDocumentCollections = async () => {
   try {
+    console.log('GET /api/documents/'); // Лог запроса
     const res = await axios.get('/api/documents/');
     const doc = res.data.results.find(d => d.id === parseInt(route.params.id));
     collections.value = doc ? doc.collections : [];
     if (collections.value.length > 0) {
       selectedCollectionId.value = collections.value[0].id;
-      await fetchStatistics(); // load statistics for the first collection
+      await fetchStatistics(); // загружаем статистику для первой коллекции
     } else {
       error.value = 'Коллекции не найдены для документа.';
     }
@@ -92,7 +93,9 @@ const fetchStatistics = async () => {
   error.value = null;
   try {
     const params = { page: page.value, collection_id: selectedCollectionId.value };
-    const res = await axios.get(`/api/documents/${route.params.id}/statistics/`, { params });
+    const url = `/api/documents/${route.params.id}/statistics/`;
+    console.log(`GET ${url}`, params); // Лог запроса со всеми параметрами
+    const res = await axios.get(url, { params });
     statistics.value = res.data.tfidf_data;
     totalPages.value = res.data.total_pages || 1;
   } catch (err) {
@@ -102,6 +105,7 @@ const fetchStatistics = async () => {
     loading.value = false;
   }
 };
+
 
 const changePage = (newPage) => {
   if (newPage >= 1 && newPage <= totalPages.value) {
