@@ -14,19 +14,15 @@ def compute_global_tfidf_table(documents):
 	N = len(documents)
 	df = defaultdict(int)
 	tokenized_docs = []
-
-	# Предварительная токенизация всех документов + расчет DF
 	for doc in documents:
 		tokens = tokenize(doc)
 		tokenized_docs.append(tokens)
 		unique_tokens = set(tokens)
 		for word in unique_tokens:
 			df[word] += 1
-
-	# IDF для всех слов
 	global_idf = {word: math.log(N / count) for word, count in df.items()}
 
-	# Топ-50 слов по IDF
+
 	top_words = heapq.nlargest(50, global_idf.items(), key=lambda x: x[1])
 	top_word_list = [word for word, _ in top_words]
 
@@ -64,9 +60,9 @@ class HuffmanNode:
 
 
 def build_huffman_tree(text):
-	freq_counter = Counter(text)
+	freq_counter = Counter(text)		# TODO O(N)
 	heap = [HuffmanNode(char, freq) for char, freq in freq_counter.items()]
-	heapq.heapify(heap)
+	heapq.heapify(heap) 				# TODO O(U)
 
 	while len(heap) > 1:
 		node1 = heapq.heappop(heap)
@@ -76,7 +72,7 @@ def build_huffman_tree(text):
 		merged.right = node2
 		heapq.heappush(heap, merged)
 
-	return heap[0] if heap else None
+	return heap[0]
 
 
 def generate_codes(node, prefix="", code_map=None):
